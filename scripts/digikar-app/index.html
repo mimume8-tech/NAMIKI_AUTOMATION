@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>デジスマ</title>
+
+    <!-- PWA 設定 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#1a73e8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="デジスマ">
+
+    <!-- アプリアイコン（SVG → data URI） -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%231a73e8'/%3E%3Ctext x='256' y='340' text-anchor='middle' font-size='240' font-weight='bold' fill='white' font-family='system-ui'%3E%E8%A8%BA%3C/text%3E%3C/svg%3E">
+
+    <style>
+        /* ════════════════════════════════════════
+           リセット & 基本
+           ════════════════════════════════════════ */
+        *, *::before, *::after {
+            margin: 0; padding: 0; box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+            background: #f0f4f8;
+            color: #1e293b;
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
+        }
+
+        /* セーフエリア（ノッチ対応） */
+        body {
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        /* ════════════════════════════════════════
+           ヘッダー
+           ════════════════════════════════════════ */
+        .header {
+            background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+            color: white;
+            padding: 24px 20px 20px;
+            text-align: center;
+            box-shadow: 0 2px 12px rgba(26,115,232,0.3);
+        }
+        .header-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+        .header p {
+            font-size: 13px;
+            opacity: 0.85;
+            margin-top: 4px;
+        }
+
+        /* ════════════════════════════════════════
+           コンテンツ
+           ════════════════════════════════════════ */
+        .content {
+            padding: 20px 16px;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ════════════════════════════════════════
+           メイン起動ボタン
+           ════════════════════════════════════════ */
+        .launch-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 18px 24px;
+            background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+            color: white;
+            font-size: 20px;
+            font-weight: 700;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(26,115,232,0.4);
+            text-decoration: none;
+            transition: transform 0.15s, box-shadow 0.15s;
+            -webkit-appearance: none;
+        }
+        .launch-btn:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 8px rgba(26,115,232,0.3);
+        }
+        .launch-btn .icon {
+            font-size: 28px;
+        }
+
+        /* ════════════════════════════════════════
+           カードUI
+           ════════════════════════════════════════ */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #334155;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-title .badge {
+            font-size: 11px;
+            background: #e8f0fe;
+            color: #1a73e8;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-weight: 600;
+        }
+
+        /* ════════════════════════════════════════
+           セットアップ手順
+           ════════════════════════════════════════ */
+        .steps {
+            list-style: none;
+            counter-reset: step;
+        }
+        .steps li {
+            counter-increment: step;
+            padding: 10px 0 10px 40px;
+            position: relative;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #475569;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .steps li:last-child { border-bottom: none; }
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 10px;
+            width: 28px;
+            height: 28px;
+            background: #e8f0fe;
+            color: #1a73e8;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .steps li.done::before {
+            content: "\2713";
+            background: #1a73e8;
+            color: white;
+        }
+        .steps strong {
+            color: #1e293b;
+        }
+
+        /* ════════════════════════════════════════
+           ブックマークレットボタン
+           ════════════════════════════════════════ */
+        .bookmarklet-area {
+            text-align: center;
+            margin-top: 12px;
+        }
+        .bookmarklet-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #f0fdf4;
+            color: #166534;
+            font-size: 14px;
+            font-weight: 600;
+            border: 2px solid #bbf7d0;
+            border-radius: 12px;
+            text-decoration: none;
+            cursor: grab;
+        }
+        .bookmarklet-hint {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 8px;
+        }
+
+        /* ════════════════════════════════════════
+           ステータスバー
+           ════════════════════════════════════════ */
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #f0fdf4;
+            border-radius: 12px;
+            margin-top: 16px;
+            font-size: 13px;
+            color: #166534;
+        }
+        .status.warning {
+            background: #fefce8;
+            color: #854d0e;
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            flex-shrink: 0;
+        }
+        .status.warning .status-dot { background: #eab308; }
+
+        /* ════════════════════════════════════════
+           ホーム画面追加バナー
+           ════════════════════════════════════════ */
+        .install-banner {
+            display: none; /* JS で表示制御 */
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin-top: 16px;
+            text-align: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .install-banner p {
+            font-size: 14px;
+            color: #78350f;
+            line-height: 1.6;
+        }
+        .install-banner .arrow {
+            display: inline-block;
+            font-size: 20px;
+            animation: bounce 1.5s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        /* ════════════════════════════════════════
+           フッター
+           ════════════════════════════════════════ */
+        .footer {
+            text-align: center;
+            padding: 24px 16px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        /* ════════════════════════════════════════
+           ダークモード
+           ════════════════════════════════════════ */
+        @media (prefers-color-scheme: dark) {
+            body { background: #0f172a; color: #e2e8f0; }
+            .card { background: #1e293b; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+            .card-title { color: #cbd5e1; }
+            .steps li { color: #94a3b8; border-bottom-color: #334155; }
+            .steps li::before { background: #1e3a5f; color: #60a5fa; }
+            .steps li.done::before { background: #1a73e8; color: white; }
+            .steps strong { color: #e2e8f0; }
+            .status { background: #064e3b; color: #6ee7b7; }
+            .status.warning { background: #451a03; color: #fbbf24; }
+            .bookmarklet-btn { background: #064e3b; color: #6ee7b7; border-color: #065f46; }
+            .install-banner { background: linear-gradient(135deg, #451a03 0%, #78350f 100%); }
+            .install-banner p { color: #fde68a; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ヘッダー -->
+    <div class="header">
+        <div class="header-icon">🏥</div>
+        <h1>デジスマ</h1>
+        <p>iPhone 最適化ランチャー</p>
+    </div>
+
+    <div class="content">
+
+        <!-- ホーム画面追加の案内（Safari 閲覧時のみ表示） -->
+        <div class="install-banner" id="installBanner">
+            <p>
+                <span class="arrow">⬆</span><br>
+                Safari の <strong>共有ボタン</strong> →<br>
+                <strong>「ホーム画面に追加」</strong> でアプリ化！
+            </p>
+        </div>
+
+        <!-- メイン起動ボタン -->
+        <a href="https://console.digikar-smart.jp/" class="launch-btn" id="launchBtn">
+            <span class="icon">🚀</span>
+            デジスマを開く
+        </a>
+
+        <!-- ステータス -->
+        <div class="status" id="statusBar">
+            <span class="status-dot"></span>
+            <span id="statusText">準備完了</span>
+        </div>
+
+        <!-- ブックマークレット（最適化注入） -->
+        <div class="card">
+            <div class="card-title">
+                📐 モバイル最適化
+                <span class="badge">ブックマークレット</span>
+            </div>
+            <p style="font-size:13px; color:#64748b; line-height:1.6; margin-bottom:12px;">
+                デジスマ表示中にこのブックマークを実行すると、<br>
+                画面をiPhone用に最適化します。
+            </p>
+            <div class="bookmarklet-area">
+                <a class="bookmarklet-btn" id="bookmarkletLink" href="#">
+                    📱 iPhone最適化
+                </a>
+                <p class="bookmarklet-hint">
+                    ↑ 長押しでブックマークに登録してください
+                </p>
+            </div>
+        </div>
+
+        <!-- セットアップガイド -->
+        <div class="card">
+            <div class="card-title">⚙️ セットアップ手順</div>
+            <ol class="steps" id="setupSteps">
+                <li>
+                    <strong>このページをホーム画面に追加</strong><br>
+                    Safari 共有ボタン → 「ホーム画面に追加」
+                </li>
+                <li>
+                    App Store で <strong>「Userscripts」</strong>をインストール<br>
+                    （Justin Wasack 製・無料）
+                </li>
+                <li>
+                    <strong>設定 → Safari → 拡張機能</strong> →<br>
+                    Userscripts を<strong>オン</strong>にする
+                </li>
+                <li>
+                    Userscripts に<strong>最適化スクリプトを登録</strong><br>
+                    （メールで送信済みのコードを貼り付け）
+                </li>
+            </ol>
+        </div>
+
+        <!-- フッター -->
+        <div class="footer">
+            デジスマ iPhone最適化 v1.0.0<br>
+            NAMIKI AUTOMATION
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // ■ ブックマークレット生成
+        //   デジスマのページ上で実行すると、モバイル最適化CSSを注入する
+        //   既存の digikar-iphone.js の CSS 部分を圧縮してブックマークレット化
+        // ============================================================
+        (function generateBookmarklet() {
+            // モバイル最適化CSS（digikar-iphone.js から抽出・圧縮）
+            var css = [
+                'html,body{overflow-x:hidden!important;max-width:100vw!important;-webkit-tap-highlight-color:transparent!important}',
+                'body{font-size:16px!important;line-height:1.6!important;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)!important}',
+                'input,select,textarea{font-size:16px!important;-webkit-appearance:none!important;border-radius:6px!important;padding:10px!important;box-sizing:border-box!important}',
+                'button,a,input[type=button],input[type=submit],[role=button],.btn{min-height:44px!important;min-width:44px!important;padding:10px 16px!important;font-size:16px!important;font-weight:bold!important;border-radius:8px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important}',
+                'table{display:block!important;overflow-x:auto!important;width:100%!important;max-width:100vw!important}',
+                'td,th{padding:10px 8px!important;font-size:14px!important;vertical-align:middle!important;word-break:break-word!important}',
+                '.container,.wrapper,main,[class*=layout],[class*=container]{max-width:100%!important;width:100%!important;padding-left:8px!important;padding-right:8px!important;box-sizing:border-box!important;overflow-x:hidden!important}',
+                'img{max-width:100%!important;height:auto!important}',
+                '.btn-primary,button[type=submit]{min-height:52px!important;font-size:18px!important;width:100%!important;margin:6px 0!important}',
+            ].join('');
+
+            // ブックマークレットコード
+            var code = "javascript:void((function(){" +
+                "if(document.getElementById('dg-opt'))return;" +
+                "var v=document.querySelector('meta[name=viewport]');" +
+                "if(!v){v=document.createElement('meta');v.name='viewport';document.head.appendChild(v);}" +
+                "v.content='width=375,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover';" +
+                "var s=document.createElement('style');s.id='dg-opt';s.textContent='" + css.replace(/'/g, "\\'") + "';" +
+                "document.head.appendChild(s);" +
+                "document.title='[最適化済] '+document.title;" +
+                "})())";
+
+            var link = document.getElementById('bookmarkletLink');
+            if (link) link.href = code;
+        })();
+
+        // ============================================================
+        // ■ PWA: Service Worker 登録
+        // ============================================================
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').then(function () {
+                console.log('[デジスマ] Service Worker 登録完了');
+            });
+        }
+
+        // ============================================================
+        // ■ ホーム画面追加バナーの表示制御
+        //   standaloneモード（= ホーム画面から起動）なら非表示
+        //   Safari 閲覧中なら表示
+        // ============================================================
+        (function checkInstallStatus() {
+            var isStandalone =
+                window.navigator.standalone === true ||
+                window.matchMedia('(display-mode: standalone)').matches;
+            var banner = document.getElementById('installBanner');
+            var status = document.getElementById('statusBar');
+            var statusText = document.getElementById('statusText');
+
+            if (isStandalone) {
+                // ホーム画面から起動中
+                banner.style.display = 'none';
+                statusText.textContent = 'アプリモードで起動中';
+            } else {
+                // Safari で閲覧中 → 追加を案内
+                banner.style.display = 'block';
+                status.classList.add('warning');
+                statusText.textContent = 'ホーム画面に追加してください';
+            }
+        })();
+
+        // ============================================================
+        // ■ apple-touch-icon を Canvas で動的生成
+        //   iOS の「ホーム画面に追加」で使われるアイコン
+        //   SVG data URI は iOS で使えないため、PNG を生成する
+        // ============================================================
+        (function generateIcon() {
+            var canvas = document.createElement('canvas');
+            canvas.width = 180;
+            canvas.height = 180;
+            var ctx = canvas.getContext('2d');
+
+            // 背景（角丸はiOSが自動で行うのでここでは不要）
+            ctx.fillStyle = '#1a73e8';
+            ctx.fillRect(0, 0, 180, 180);
+
+            // 「診」の文字
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 100px system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('診', 90, 96);
+
+            // apple-touch-icon として設定
+            var url = canvas.toDataURL('image/png');
+            var link = document.querySelector('link[rel="apple-touch-icon"]');
+            if (link) link.href = url;
+
+            // 追加のアイコンサイズも設定
+            var link2 = document.createElement('link');
+            link2.rel = 'apple-touch-icon';
+            link2.sizes = '180x180';
+            link2.href = url;
+            document.head.appendChild(link2);
+        })();
+    </script>
+
+</body>
+</html>

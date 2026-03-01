@@ -1,0 +1,25 @@
+{
+  "name": "デジスマ",
+  "short_name": "デジスマ",
+  "description": "デジスマ（診療支援システム）iPhone用ランチャー",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1a73e8",
+  "background_color": "#f8fafc",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%231a73e8'/%3E%3Ctext x='256' y='320' text-anchor='middle' font-size='240' font-weight='bold' fill='white' font-family='system-ui'%3E%E8%A8%BA%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%231a73e8'/%3E%3Ctext x='256' y='320' text-anchor='middle' font-size='240' font-weight='bold' fill='white' font-family='system-ui'%3E%E8%A8%BA%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
