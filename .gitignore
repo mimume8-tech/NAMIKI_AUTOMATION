@@ -6,3 +6,7 @@ Thumbs.db
 scripts/adhd_distribution_auto.config.json
 node_modules/
 .vscode/
+
+.playwright-profile/
+exports/
+*.lnk

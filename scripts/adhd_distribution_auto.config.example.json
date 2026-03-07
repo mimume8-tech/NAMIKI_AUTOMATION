@@ -1,0 +1,79 @@
+{
+  "loginUrl": "https://www.adhd-vcdcs.jp/",
+  "patientSearchUrl": "",
+  "username": "",
+  "password": "",
+  "chromePath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "debugPort": 9333,
+  "profileDir": ".playwright-profile\\adhd-distribution",
+  "timeouts": {
+    "browserConnectMs": 30000,
+    "screenWaitMs": 180000,
+    "manualSearchMs": 600000,
+    "postClickMs": 1200
+  },
+  "texts": {
+    "medicalGate": [
+      "\u3042\u306a\u305f\u306f\u533b\u7642\u95a2\u4fc2\u8005\u3067\u3059\u304b"
+    ],
+    "medicalGateYes": [
+      "\u306f\u3044"
+    ],
+    "loginSubmit": [
+      "\u30ed\u30b0\u30a4\u30f3",
+      "sign in",
+      "login"
+    ],
+    "patientNumber": [
+      "\u60a3\u8005\u756a\u53f7",
+      "\u60a3\u8005no",
+      "\u60a3\u8005id"
+    ],
+    "select": [
+      "\u9078\u629e"
+    ],
+    "prescriptionInput": [
+      "\u51e6\u65b9\u5165\u529b"
+    ],
+    "prescriptionDate": [
+      "\u51e6\u65b9\u65e5"
+    ],
+    "drugKeywords": [
+      "\u30b3\u30f3\u30b5\u30fc\u30bf",
+      "concerta"
+    ],
+    "mgField": [
+      "mg",
+      "\u898f\u683c"
+    ],
+    "tabletField": [
+      "\u9320\u6570",
+      "\u6570\u91cf",
+      "\u7528\u91cf"
+    ],
+    "daysField": [
+      "\u65e5\u6570",
+      "\u65e5\u5206",
+      "\u6295\u4e0e\u65e5\u6570"
+    ]
+  },
+  "selectors": {
+    "username": [
+      "input[name=\"loginId\"]",
+      "input[name=\"userId\"]",
+      "input[name=\"username\"]",
+      "input[type=\"email\"]",
+      "input[type=\"text\"]"
+    ],
+    "password": [
+      "input[type=\"password\"]"
+    ],
+    "patientNumber": [
+      "input[name*=\"patient\"]",
+      "input[id*=\"patient\"]",
+      "input[placeholder*=\"\u60a3\u8005\"]",
+      "input[type=\"text\"]",
+      "input[type=\"number\"]"
+    ]
+  }
+}

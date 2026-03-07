@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>デジカル自動処理</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+
+  .header { background: #16213e; padding: 16px 24px; border-bottom: 2px solid #0f3460; display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 20px; color: #e94560; }
+  .header .status-badge { padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: bold; }
+  .status-idle { background: #555; }
+  .status-running { background: #e94560; animation: pulse 1.5s infinite; }
+  .status-stopping { background: #f0a500; }
+  .status-done { background: #0f3460; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+  .controls { background: #16213e; padding: 16px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .controls label { font-size: 14px; color: #aaa; }
+  .controls input { background: #0a0a1a; border: 1px solid #0f3460; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 15px; width: 140px; }
+  .controls input:focus { outline: none; border-color: #e94560; }
+  .controls button { padding: 8px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+  .controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-start { background: #e94560; color: #fff; }
+  .btn-start:hover:not(:disabled) { background: #c73650; }
+  .btn-stop { background: #f0a500; color: #000; }
+  .btn-stop:hover:not(:disabled) { background: #d09000; }
+  .btn-reset { background: #333; color: #ccc; }
+  .btn-reset:hover:not(:disabled) { background: #444; }
+
+  .stats { display: flex; gap: 16px; padding: 12px 24px; background: #0a0a1a; }
+  .stat { flex: 1; text-align: center; padding: 12px; border-radius: 8px; background: #16213e; }
+  .stat .num { font-size: 28px; font-weight: bold; }
+  .stat .label { font-size: 12px; color: #888; margin-top: 4px; }
+  .stat-saved .num { color: #4ecca3; }
+  .stat-skip .num { color: #7ec8e3; }
+  .stat-err .num { color: #e94560; }
+  .stat-total .num { color: #f0a500; }
+
+  .progress-bar { height: 4px; background: #0a0a1a; }
+  .progress-fill { height: 100%; background: #e94560; transition: width 0.3s; width: 0%; }
+
+  .log-container { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .log { flex: 1; overflow-y: auto; padding: 12px 24px; font-family: 'Consolas', 'MS Gothic', monospace; font-size: 13px; line-height: 1.6; background: #0a0a1a; min-height: 300px; max-height: calc(100vh - 280px); }
+  .log div { white-space: pre-wrap; word-break: break-all; }
+  .log .ok { color: #4ecca3; }
+  .log .err { color: #e94560; }
+  .log .skip { color: #7ec8e3; }
+  .log .info { color: #888; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>デジカル 自動下書き保存</h1>
+    <span id="statusBadge" class="status-badge status-idle">待機中</span>
+  </div>
+
+  <div class="controls">
+    <label>日付:</label>
+    <input type="text" id="dateInput" placeholder="例: 20260305">
+    <button class="btn-start" id="btnStart" onclick="doStart()">開始</button>
+    <button class="btn-stop" id="btnStop" onclick="doStop()" disabled>停止</button>
+    <button class="btn-reset" id="btnReset" onclick="doReset()">リセット</button>
+    <span style="color:#666; font-size:12px; margin-left:8px;">空欄=今日 / 日付入力で変更</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat stat-saved"><div class="num" id="numSaved">0</div><div class="label">保存</div></div>
+    <div class="stat stat-skip"><div class="num" id="numSkip">0</div><div class="label">スキップ</div></div>
+    <div class="stat stat-err"><div class="num" id="numErr">0</div><div class="label">エラー</div></div>
+    <div class="stat stat-total"><div class="num" id="numProgress">0/0</div><div class="label">進捗</div></div>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="log-container">
+    <div class="log" id="logArea"></div>
+  </div>
+
+<script>
+const logArea = document.getElementById('logArea');
+const statusBadge = document.getElementById('statusBadge');
+let currentStatus = 'idle';
+
+// SSE接続
+function connectSSE() {
+  const es = new EventSource('/api/events');
+  es.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'log') addLog(msg.data);
+    if (msg.type === 'status') updateUI(msg.data);
+  };
+  es.onerror = () => { setTimeout(connectSSE, 2000); es.close(); };
+}
+connectSSE();
+
+function addLog(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  if (text.includes('[OK]')) div.className = 'ok';
+  else if (text.includes('!!') || text.includes('エラー')) div.className = 'err';
+  else if (text.includes('スキップ')) div.className = 'skip';
+  else if (text.includes('->') || text.includes('---')) div.className = 'info';
+  logArea.appendChild(div);
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+function updateUI(s) {
+  currentStatus = s.status;
+  document.getElementById('numSaved').textContent = s.savedCount;
+  document.getElementById('numSkip').textContent = s.skippedCount;
+  document.getElementById('numErr').textContent = s.errorCount;
+  document.getElementById('numProgress').textContent = `${s.current}/${s.total}`;
+
+  const pct = s.total > 0 ? (s.current / s.total * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  const badge = { idle: ['待機中','status-idle'], running: ['実行中','status-running'], stopping: ['停止中','status-stopping'], done: ['完了','status-done'] };
+  const [label, cls] = badge[s.status] || ['不明','status-idle'];
+  statusBadge.textContent = label;
+  statusBadge.className = 'status-badge ' + cls;
+
+  document.getElementById('btnStart').disabled = s.status === 'running' || s.status === 'stopping';
+  document.getElementById('btnStop').disabled = s.status !== 'running';
+  document.getElementById('btnReset').disabled = s.status === 'running';
+  document.getElementById('dateInput').disabled = s.status === 'running';
+}
+
+async function doStart() {
+  const date = document.getElementById('dateInput').value.trim();
+  logArea.innerHTML = '';
+  await fetch('/api/start', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ date }) });
+}
+
+async function doStop() {
+  await fetch('/api/stop', { method: 'POST' });
+}
+
+async function doReset() {
+  if (!confirm('processed.json をリセットします。次回は全患者を最初から処理します。よろしいですか？')) return;
+  logArea.innerHTML = '';
+  await fetch('/api/reset', { method: 'POST' });
+}
+
+// 今日の日付をプレースホルダーに
+const today = new Date();
+const yyyymmdd = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+document.getElementById('dateInput').placeholder = yyyymmdd;
+</script>
+</body>
+</html>

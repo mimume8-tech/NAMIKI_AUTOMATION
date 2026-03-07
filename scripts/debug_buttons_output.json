@@ -1,0 +1,4286 @@
+{
+  "sections": [
+    {
+      "target": "主訴・所見",
+      "found": [
+        {
+          "text": "主訴・所見",
+          "tag": "SPAN",
+          "cls": "",
+          "pos": {
+            "top": 214,
+            "left": 12
+          },
+          "parentLevels": [
+            {
+              "lv": 0,
+              "tag": "DIV",
+              "cls": "css-1b8i6hv",
+              "pos": {
+                "top": 205,
+                "left": 0
+              },
+              "size": {
+                "w": 228,
+                "h": 30
+              },
+              "childCount": 3,
+              "children": [
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "主訴・所見",
+                  "pos": {
+                    "top": 214,
+                    "left": 12
+                  },
+                  "size": {
+                    "w": 63,
+                    "h": 12
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "主訴・所見"
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "css-1ypjkz1",
+                  "text": "",
+                  "pos": {
+                    "top": 220,
+                    "left": 81
+                  },
+                  "size": {
+                    "w": 105,
+                    "h": 0
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": ""
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "css-lbdnvw",
+                  "text": "",
+                  "pos": {
+                    "top": 205,
+                    "left": 192
+                  },
+                  "size": {
+                    "w": 30,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": true,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<button class=\"css-1nnxsgs css-1jg2kh3 \" type=\"button\" data-size=\"md\" data-variant=\"iconOnly\"><span class=\"css-16k99u2\"><svg xmlns=\"http://www.w3.org/"
+                }
+              ]
+            },
+            {
+              "lv": 1,
+              "tag": "DIV",
+              "cls": "css-1eo882a",
+              "pos": {
+                "top": 205,
+                "left": 0
+              },
+              "size": {
+                "w": 228,
+                "h": 61
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1b8i6hv",
+                  "text": "主訴・所見",
+                  "pos": {
+                    "top": 205,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button class=\"css-1nnxsgs"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-n4hhec",
+                  "text": "",
+                  "pos": {
+                    "top": 235,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 31
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1ms3crk\"></div>"
+                }
+              ]
+            },
+            {
+              "lv": 2,
+              "tag": "DIV",
+              "cls": "css-mlevy8",
+              "pos": {
+                "top": 205,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 61
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "主訴・所見",
+                  "pos": {
+                    "top": 205,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 61
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "処置・行為処方箋備考に一包化を記載",
+                  "pos": {
+                    "top": 205,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 302,
+                    "h": 61
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>処置・行為</span><span><div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><but"
+                }
+              ]
+            },
+            {
+              "lv": 3,
+              "tag": "DIV",
+              "cls": "css-ybrhvy",
+              "pos": {
+                "top": 171,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 95
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1qpw2rs",
+                  "text": "下書き心療内科木村友哉先生保険無し未承認",
+                  "pos": {
+                    "top": 171,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 34
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span class=\"css-124zgow\">下書き</span><span>心療内科</span><span>木村友哉先生</span><span>保険無し</span><span></span><span>未承認</span>"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-mlevy8",
+                  "text": "主訴・所見処置・行為処方箋備考に一包化を記載",
+                  "pos": {
+                    "top": 205,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 61
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1eo882a\"><div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-ro"
+                }
+              ]
+            },
+            {
+              "lv": 4,
+              "tag": "DIV",
+              "cls": "css-11rg2nu",
+              "pos": {
+                "top": 171,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 95
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-ybrhvy",
+                  "text": "下書き心療内科木村友哉先生保険無し未承認主訴・所見処置・行為処方箋備考に一包化を",
+                  "pos": {
+                    "top": 171,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 95
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1qpw2rs\"><span class=\"css-124zgow\">下書き</span><span>心療内科</span><span>木村友哉先生</span><span>保険無し</span><span></span><span>未承認</span></div><"
+                }
+              ]
+            },
+            {
+              "lv": 5,
+              "tag": "DIV",
+              "cls": "",
+              "pos": {
+                "top": 171,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 95
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-11rg2nu",
+                  "text": "下書き心療内科木村友哉先生保険無し未承認主訴・所見処置・行為処方箋備考に一包化を",
+                  "pos": {
+                    "top": 171,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 95
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-ybrhvy\"><div class=\"css-1qpw2rs\"><span class=\"css-124zgow\">下書き</span><span>心療内科</span><span>木村友哉先生</span><span>保険無し</span><span></span"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "text": "主訴・所見",
+          "tag": "SPAN",
+          "cls": "",
+          "pos": {
+            "top": 345,
+            "left": 12
+          },
+          "parentLevels": [
+            {
+              "lv": 0,
+              "tag": "DIV",
+              "cls": "css-1b8i6hv",
+              "pos": {
+                "top": 337,
+                "left": 0
+              },
+              "size": {
+                "w": 228,
+                "h": 30
+              },
+              "childCount": 3,
+              "children": [
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "主訴・所見",
+                  "pos": {
+                    "top": 345,
+                    "left": 12
+                  },
+                  "size": {
+                    "w": 63,
+                    "h": 12
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "主訴・所見"
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "css-1ypjkz1",
+                  "text": "",
+                  "pos": {
+                    "top": 351,
+                    "left": 81
+                  },
+                  "size": {
+                    "w": 105,
+                    "h": 0
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": ""
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "css-lbdnvw",
+                  "text": "",
+                  "pos": {
+                    "top": 336,
+                    "left": 192
+                  },
+                  "size": {
+                    "w": 30,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": true,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<button class=\"css-1nnxsgs css-1jg2kh3 \" type=\"button\" data-size=\"md\" data-variant=\"iconOnly\"><span class=\"css-16k99u2\"><svg xmlns=\"http://www.w3.org/"
+                }
+              ]
+            },
+            {
+              "lv": 1,
+              "tag": "DIV",
+              "cls": "css-1eo882a",
+              "pos": {
+                "top": 337,
+                "left": 0
+              },
+              "size": {
+                "w": 228,
+                "h": 1212
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1b8i6hv",
+                  "text": "主訴・所見",
+                  "pos": {
+                    "top": 337,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button class=\"css-1nnxsgs"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-n4hhec",
+                  "text": "再診　通院精神療法6分(指定医)★在宅ワークと週一で千葉市の事業所へ。→R7.5",
+                  "pos": {
+                    "top": 367,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 1182
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1ms3crk\"><div>再診　通院精神療法6分(指定医)</div><div>★在宅ワークと週一で千葉市の事業所へ。→R7.5.21から復帰。</div><div>★R7.2　原→﨑村へ</div><div><br></div><div>病気休暇⇒R7.4復帰→病"
+                }
+              ]
+            },
+            {
+              "lv": 2,
+              "tag": "DIV",
+              "cls": "css-mlevy8",
+              "pos": {
+                "top": 337,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1212
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "主訴・所見再診　通院精神療法6分(指定医)★在宅ワークと週一で千葉市の事業所へ。",
+                  "pos": {
+                    "top": 337,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 1212
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "処置・行為診 再診料診 明細書発行体制等加算1回他 通院精神療法(30分未満)(",
+                  "pos": {
+                    "top": 337,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 302,
+                    "h": 1212
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>処置・行為</span><span><div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><but"
+                }
+              ]
+            },
+            {
+              "lv": 3,
+              "tag": "DIV",
+              "cls": "css-ybrhvy",
+              "pos": {
+                "top": 304,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1245
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1qpw2rs",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認",
+                  "pos": {
+                    "top": 304,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 32
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span>"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-mlevy8",
+                  "text": "主訴・所見再診　通院精神療法6分(指定医)★在宅ワークと週一で千葉市の事業所へ。",
+                  "pos": {
+                    "top": 337,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1212
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1eo882a\"><div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-ro"
+                }
+              ]
+            },
+            {
+              "lv": 4,
+              "tag": "DIV",
+              "cls": "css-11rg2nu",
+              "pos": {
+                "top": 304,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1245
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-ybrhvy",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認主訴・所見再診　通院精神療法6分(",
+                  "pos": {
+                    "top": 304,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1245
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1qpw2rs\"><span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span></div><div class=\"css-mlevy8\"><div cl"
+                }
+              ]
+            },
+            {
+              "lv": 5,
+              "tag": "DIV",
+              "cls": "",
+              "pos": {
+                "top": 304,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1245
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-11rg2nu",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認主訴・所見再診　通院精神療法6分(",
+                  "pos": {
+                    "top": 304,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1245
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-ybrhvy\"><div class=\"css-1qpw2rs\"><span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span></div><div cl"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "text": "主訴・所見",
+          "tag": "SPAN",
+          "cls": "",
+          "pos": {
+            "top": 1627,
+            "left": 12
+          },
+          "parentLevels": [
+            {
+              "lv": 0,
+              "tag": "DIV",
+              "cls": "css-1b8i6hv",
+              "pos": {
+                "top": 1619,
+                "left": 0
+              },
+              "size": {
+                "w": 228,
+                "h": 30
+              },
+              "childCount": 3,
+              "children": [
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "主訴・所見",
+                  "pos": {
+                    "top": 1627,
+                    "left": 12
+                  },
+                  "size": {
+                    "w": 63,
+                    "h": 12
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "主訴・所見"
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "css-1ypjkz1",
+                  "text": "",
+                  "pos": {
+                    "top": 1633,
+                    "left": 81
+                  },
+                  "size": {
+                    "w": 105,
+                    "h": 0
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": ""
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "css-lbdnvw",
+                  "text": "",
+                  "pos": {
+                    "top": 1618,
+                    "left": 192
+                  },
+                  "size": {
+                    "w": 30,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": true,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<button class=\"css-1nnxsgs css-1jg2kh3 \" type=\"button\" data-size=\"md\" data-variant=\"iconOnly\"><span class=\"css-16k99u2\"><svg xmlns=\"http://www.w3.org/"
+                }
+              ]
+            },
+            {
+              "lv": 1,
+              "tag": "DIV",
+              "cls": "css-1eo882a",
+              "pos": {
+                "top": 1619,
+                "left": 0
+              },
+              "size": {
+                "w": 228,
+                "h": 1232
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1b8i6hv",
+                  "text": "主訴・所見",
+                  "pos": {
+                    "top": 1619,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button class=\"css-1nnxsgs"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-n4hhec",
+                  "text": "再診　通院精神療法6分(指定医)★在宅ワークと週一で千葉市の事業所へ。→R7.5",
+                  "pos": {
+                    "top": 1649,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 1202
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1ms3crk\"><div>再診　通院精神療法6分(指定医)</div><div>★在宅ワークと週一で千葉市の事業所へ。→R7.5.21から復帰。</div><div>★R7.2　原→﨑村へ</div><div><br></div><div>病気休暇⇒R7.4復帰→病"
+                }
+              ]
+            },
+            {
+              "lv": 2,
+              "tag": "DIV",
+              "cls": "css-mlevy8",
+              "pos": {
+                "top": 1619,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1232
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "主訴・所見再診　通院精神療法6分(指定医)★在宅ワークと週一で千葉市の事業所へ。",
+                  "pos": {
+                    "top": 1619,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 1232
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "処置・行為診 再診料診 明細書発行体制等加算1回他 通院精神療法(30分未満)(",
+                  "pos": {
+                    "top": 1619,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 302,
+                    "h": 1232
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>処置・行為</span><span><div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><but"
+                }
+              ]
+            },
+            {
+              "lv": 3,
+              "tag": "DIV",
+              "cls": "css-ybrhvy",
+              "pos": {
+                "top": 1586,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1264
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1qpw2rs",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認",
+                  "pos": {
+                    "top": 1586,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 32
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span>"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-mlevy8",
+                  "text": "主訴・所見再診　通院精神療法6分(指定医)★在宅ワークと週一で千葉市の事業所へ。",
+                  "pos": {
+                    "top": 1619,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1232
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1eo882a\"><div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-ro"
+                }
+              ]
+            },
+            {
+              "lv": 4,
+              "tag": "DIV",
+              "cls": "css-11rg2nu",
+              "pos": {
+                "top": 1586,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1264
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-ybrhvy",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認主訴・所見再診　通院精神療法6分(",
+                  "pos": {
+                    "top": 1586,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1264
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1qpw2rs\"><span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span></div><div class=\"css-mlevy8\"><div cl"
+                }
+              ]
+            },
+            {
+              "lv": 5,
+              "tag": "DIV",
+              "cls": "",
+              "pos": {
+                "top": 1586,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1264
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-11rg2nu",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認主訴・所見再診　通院精神療法6分(",
+                  "pos": {
+                    "top": 1586,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1264
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-ybrhvy\"><div class=\"css-1qpw2rs\"><span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span></div><div cl"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "text": "主訴・所見",
+          "tag": "SPAN",
+          "cls": "css-1ny9onj",
+          "pos": {
+            "top": 110,
+            "left": 556
+          },
+          "parentLevels": [
+            {
+              "lv": 0,
+              "tag": "DIV",
+              "cls": "",
+              "pos": {
+                "top": 105,
+                "left": 544
+              },
+              "size": {
+                "w": 316,
+                "h": 29
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "SPAN",
+                  "cls": "css-1ny9onj",
+                  "text": "主訴・所見",
+                  "pos": {
+                    "top": 110,
+                    "left": 556
+                  },
+                  "size": {
+                    "w": 68,
+                    "h": 19
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "主訴・所見"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "",
+                  "text": "",
+                  "pos": {
+                    "top": 105,
+                    "left": 630
+                  },
+                  "size": {
+                    "w": 218,
+                    "h": 29
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div><button class=\"css-1nnxsgs css-1jg2kh3 css-65atgb\" type=\"button\" data-size=\"md\" data-variant=\"iconOnly\" data-color=\"black\" data-selected=\"true\" d"
+                }
+              ]
+            },
+            {
+              "lv": 1,
+              "tag": "DIV",
+              "cls": "css-1e93myu",
+              "pos": {
+                "top": 105,
+                "left": 544
+              },
+              "size": {
+                "w": 316,
+                "h": 727
+              },
+              "childCount": 3,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "",
+                  "text": "主訴・所見",
+                  "pos": {
+                    "top": 105,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 316,
+                    "h": 29
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": true,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span class=\"css-1ny9onj\">主訴・所見</span><div><div><button class=\"css-1nnxsgs css-1jg2kh3 css-65atgb\" type=\"button\" data-size=\"md\" data-variant=\"iconOnly"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "",
+                  "text": "",
+                  "pos": {
+                    "top": 134,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 316,
+                    "h": 662
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-p978wd\"><div class=\"css-1p1yfi5\"><div contenteditable=\"true\" translate=\"no\" class=\"tiptap ProseMirror digikar-editor css-hpp9bd\" tabin"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-ur4awg",
+                  "text": "シェーマ追加",
+                  "pos": {
+                    "top": 796,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 316,
+                    "h": 36
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span class=\"css-1ypjkz1\"></span><button class=\"css-1nnxsgs \" type=\"button\" data-size=\"sm\" data-variant=\"normal\">シェーマ追加</button>"
+                }
+              ]
+            },
+            {
+              "lv": 2,
+              "tag": "DIV",
+              "cls": "css-bdc73j",
+              "pos": {
+                "top": 105,
+                "left": 544
+              },
+              "size": {
+                "w": 736,
+                "h": 727
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1e93myu",
+                  "text": "主訴・所見シェーマ追加",
+                  "pos": {
+                    "top": 105,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 316,
+                    "h": 727
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div data-header-part=\"true\"><span class=\"css-1ny9onj\">主訴・所見</span><div><div><button class=\"css-1nnxsgs css-1jg2kh3 css-65atgb\" type=\"button\" data-siz"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-1p36h0u",
+                  "text": "処置・行為処方箋備考に一包化を記載適応症追加",
+                  "pos": {
+                    "top": 105,
+                    "left": 860
+                  },
+                  "size": {
+                    "w": 420,
+                    "h": 727
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"title-part\"><span>処置・行為</span><span class=\"css-1ypjkz1\"></span><span></span><span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" dat"
+                }
+              ]
+            },
+            {
+              "lv": 3,
+              "tag": "DIV",
+              "cls": "css-16bq4yl",
+              "pos": {
+                "top": 75,
+                "left": 544
+              },
+              "size": {
+                "w": 736,
+                "h": 757
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-ztkqqy ",
+                  "text": "下書き心療内科木村友哉先生保険無し未承認FAX希望通常請求返戻再請求返戻再請求(",
+                  "pos": {
+                    "top": 75,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-b28jqc\"><span class=\"css-u74qx0\">下書き</span><span>心療内科</span><span>木村友哉先生</span><span>保険無し</span><span>未承認</span><span class=\"css-1vdi8"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-bdc73j",
+                  "text": "主訴・所見シェーマ追加処置・行為処方箋備考に一包化を記載適応症追加",
+                  "pos": {
+                    "top": 105,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 727
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1e93myu\"><div data-header-part=\"true\"><span class=\"css-1ny9onj\">主訴・所見</span><div><div><button class=\"css-1nnxsgs css-1jg2kh3 css-65atg"
+                }
+              ]
+            },
+            {
+              "lv": 4,
+              "tag": "DIV",
+              "cls": "css-116vn3d",
+              "pos": {
+                "top": 45,
+                "left": 544
+              },
+              "size": {
+                "w": 736,
+                "h": 787
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-gd9ur8",
+                  "text": "2026/3/5 (木)保険無定期登録セット登録カルテ一覧",
+                  "pos": {
+                    "top": 45,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-cxnp6l\" data-karte-date-display=\"true\"><span>2026/3/5 (木)</span></div><ul class=\"css-11frrbt css-1gl3sme\"><li class=\"css-ufdrfe css-9b"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-16bq4yl",
+                  "text": "下書き心療内科木村友哉先生保険無し未承認FAX希望通常請求返戻再請求返戻再請求(",
+                  "pos": {
+                    "top": 75,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 757
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-ztkqqy \"><div class=\"css-b28jqc\"><span class=\"css-u74qx0\">下書き</span><span>心療内科</span><span>木村友哉先生</span><span>保険無し</span><span>未承認</sp"
+                }
+              ]
+            },
+            {
+              "lv": 5,
+              "tag": "DIV",
+              "cls": "css-9vboi8",
+              "pos": {
+                "top": 45,
+                "left": 544
+              },
+              "size": {
+                "w": 736,
+                "h": 787
+              },
+              "childCount": 3,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-116vn3d",
+                  "text": "2026/3/5 (木)保険無定期登録セット登録カルテ一覧下書き心療内科木村友哉",
+                  "pos": {
+                    "top": 45,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 787
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-gd9ur8\"><div class=\"css-cxnp6l\" data-karte-date-display=\"true\"><span>2026/3/5 (木)</span></div><ul class=\"css-11frrbt css-1gl3sme\"><li "
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "",
+                  "text": "",
+                  "pos": {
+                    "top": 832,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 0
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": ""
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-a92l0x",
+                  "text": "",
+                  "pos": {
+                    "top": 832,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 0
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "処置・行為",
+      "found": [
+        {
+          "text": "処置・行為",
+          "tag": "SPAN",
+          "cls": "",
+          "pos": {
+            "top": 214,
+            "left": 234
+          },
+          "parentLevels": [
+            {
+              "lv": 0,
+              "tag": "DIV",
+              "cls": "css-1b8i6hv",
+              "pos": {
+                "top": 205,
+                "left": 228
+              },
+              "size": {
+                "w": 301,
+                "h": 30
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "処置・行為",
+                  "pos": {
+                    "top": 214,
+                    "left": 234
+                  },
+                  "size": {
+                    "w": 63,
+                    "h": 12
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "処置・行為"
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "",
+                  "pos": {
+                    "top": 205,
+                    "left": 493
+                  },
+                  "size": {
+                    "w": 30,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button class=\"css-1nnxsgs css-1jg2kh3 \" type=\"button"
+                }
+              ]
+            },
+            {
+              "lv": 1,
+              "tag": "DIV",
+              "cls": "css-1eo882a",
+              "pos": {
+                "top": 205,
+                "left": 228
+              },
+              "size": {
+                "w": 302,
+                "h": 61
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1b8i6hv",
+                  "text": "処置・行為",
+                  "pos": {
+                    "top": 205,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 301,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>処置・行為</span><span><div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button class=\"css-1nnxsgs cs"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-n4hhec",
+                  "text": "処方箋備考に一包化を記載",
+                  "pos": {
+                    "top": 235,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 301,
+                    "h": 31
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<ul class=\"css-dlhdzr\"></ul><div class=\"css-1duce0z\"><label class=\"css-1voonsz\"><input type=\"checkbox\" id=\"karte-one-package\" disabled=\"\"><span><svg x"
+                }
+              ]
+            },
+            {
+              "lv": 2,
+              "tag": "DIV",
+              "cls": "css-mlevy8",
+              "pos": {
+                "top": 205,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 61
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "主訴・所見",
+                  "pos": {
+                    "top": 205,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 61
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "処置・行為処方箋備考に一包化を記載",
+                  "pos": {
+                    "top": 205,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 302,
+                    "h": 61
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>処置・行為</span><span><div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><but"
+                }
+              ]
+            },
+            {
+              "lv": 3,
+              "tag": "DIV",
+              "cls": "css-ybrhvy",
+              "pos": {
+                "top": 171,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 95
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1qpw2rs",
+                  "text": "下書き心療内科木村友哉先生保険無し未承認",
+                  "pos": {
+                    "top": 171,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 34
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span class=\"css-124zgow\">下書き</span><span>心療内科</span><span>木村友哉先生</span><span>保険無し</span><span></span><span>未承認</span>"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-mlevy8",
+                  "text": "主訴・所見処置・行為処方箋備考に一包化を記載",
+                  "pos": {
+                    "top": 205,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 61
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1eo882a\"><div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-ro"
+                }
+              ]
+            },
+            {
+              "lv": 4,
+              "tag": "DIV",
+              "cls": "css-11rg2nu",
+              "pos": {
+                "top": 171,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 95
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-ybrhvy",
+                  "text": "下書き心療内科木村友哉先生保険無し未承認主訴・所見処置・行為処方箋備考に一包化を",
+                  "pos": {
+                    "top": 171,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 95
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1qpw2rs\"><span class=\"css-124zgow\">下書き</span><span>心療内科</span><span>木村友哉先生</span><span>保険無し</span><span></span><span>未承認</span></div><"
+                }
+              ]
+            },
+            {
+              "lv": 5,
+              "tag": "DIV",
+              "cls": "",
+              "pos": {
+                "top": 171,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 95
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-11rg2nu",
+                  "text": "下書き心療内科木村友哉先生保険無し未承認主訴・所見処置・行為処方箋備考に一包化を",
+                  "pos": {
+                    "top": 171,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 95
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-ybrhvy\"><div class=\"css-1qpw2rs\"><span class=\"css-124zgow\">下書き</span><span>心療内科</span><span>木村友哉先生</span><span>保険無し</span><span></span"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "text": "処置・行為",
+          "tag": "SPAN",
+          "cls": "",
+          "pos": {
+            "top": 345,
+            "left": 234
+          },
+          "parentLevels": [
+            {
+              "lv": 0,
+              "tag": "DIV",
+              "cls": "css-1b8i6hv",
+              "pos": {
+                "top": 337,
+                "left": 228
+              },
+              "size": {
+                "w": 301,
+                "h": 30
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "処置・行為",
+                  "pos": {
+                    "top": 345,
+                    "left": 234
+                  },
+                  "size": {
+                    "w": 63,
+                    "h": 12
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "処置・行為"
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "",
+                  "pos": {
+                    "top": 336,
+                    "left": 493
+                  },
+                  "size": {
+                    "w": 30,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button class=\"css-1nnxsgs css-1jg2kh3 \" type=\"button"
+                }
+              ]
+            },
+            {
+              "lv": 1,
+              "tag": "DIV",
+              "cls": "css-1eo882a",
+              "pos": {
+                "top": 337,
+                "left": 228
+              },
+              "size": {
+                "w": 302,
+                "h": 1212
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1b8i6hv",
+                  "text": "処置・行為",
+                  "pos": {
+                    "top": 337,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 301,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>処置・行為</span><span><div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button class=\"css-1nnxsgs cs"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-n4hhec",
+                  "text": "診 再診料診 明細書発行体制等加算1回他 通院精神療法(30分未満)(精神保健指",
+                  "pos": {
+                    "top": 367,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 301,
+                    "h": 1182
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<ul class=\"css-dlhdzr\"><li class=\"css-4tmygg\"><table class=\"dk-karte-treatment-group\" data-treatment-list-item=\"true\"><colgroup><col class=\"dk-karte-p"
+                }
+              ]
+            },
+            {
+              "lv": 2,
+              "tag": "DIV",
+              "cls": "css-mlevy8",
+              "pos": {
+                "top": 337,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1212
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "主訴・所見再診　通院精神療法6分(指定医)★在宅ワークと週一で千葉市の事業所へ。",
+                  "pos": {
+                    "top": 337,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 1212
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "処置・行為診 再診料診 明細書発行体制等加算1回他 通院精神療法(30分未満)(",
+                  "pos": {
+                    "top": 337,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 302,
+                    "h": 1212
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>処置・行為</span><span><div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><but"
+                }
+              ]
+            },
+            {
+              "lv": 3,
+              "tag": "DIV",
+              "cls": "css-ybrhvy",
+              "pos": {
+                "top": 304,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1245
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1qpw2rs",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認",
+                  "pos": {
+                    "top": 304,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 32
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span>"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-mlevy8",
+                  "text": "主訴・所見再診　通院精神療法6分(指定医)★在宅ワークと週一で千葉市の事業所へ。",
+                  "pos": {
+                    "top": 337,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1212
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1eo882a\"><div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-ro"
+                }
+              ]
+            },
+            {
+              "lv": 4,
+              "tag": "DIV",
+              "cls": "css-11rg2nu",
+              "pos": {
+                "top": 304,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1245
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-ybrhvy",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認主訴・所見再診　通院精神療法6分(",
+                  "pos": {
+                    "top": 304,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1245
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1qpw2rs\"><span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span></div><div class=\"css-mlevy8\"><div cl"
+                }
+              ]
+            },
+            {
+              "lv": 5,
+              "tag": "DIV",
+              "cls": "",
+              "pos": {
+                "top": 304,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1245
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-11rg2nu",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認主訴・所見再診　通院精神療法6分(",
+                  "pos": {
+                    "top": 304,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1245
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-ybrhvy\"><div class=\"css-1qpw2rs\"><span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span></div><div cl"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "text": "処置・行為",
+          "tag": "SPAN",
+          "cls": "",
+          "pos": {
+            "top": 1627,
+            "left": 234
+          },
+          "parentLevels": [
+            {
+              "lv": 0,
+              "tag": "DIV",
+              "cls": "css-1b8i6hv",
+              "pos": {
+                "top": 1619,
+                "left": 228
+              },
+              "size": {
+                "w": 301,
+                "h": 30
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "処置・行為",
+                  "pos": {
+                    "top": 1627,
+                    "left": 234
+                  },
+                  "size": {
+                    "w": 63,
+                    "h": 12
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "処置・行為"
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "",
+                  "pos": {
+                    "top": 1618,
+                    "left": 493
+                  },
+                  "size": {
+                    "w": 30,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button class=\"css-1nnxsgs css-1jg2kh3 \" type=\"button"
+                }
+              ]
+            },
+            {
+              "lv": 1,
+              "tag": "DIV",
+              "cls": "css-1eo882a",
+              "pos": {
+                "top": 1619,
+                "left": 228
+              },
+              "size": {
+                "w": 302,
+                "h": 1232
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1b8i6hv",
+                  "text": "処置・行為",
+                  "pos": {
+                    "top": 1619,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 301,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>処置・行為</span><span><div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button class=\"css-1nnxsgs cs"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-n4hhec",
+                  "text": "診 再診料診 明細書発行体制等加算1回他 通院精神療法(30分未満)(精神保健指",
+                  "pos": {
+                    "top": 1649,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 301,
+                    "h": 1202
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<ul class=\"css-dlhdzr\"><li class=\"css-4tmygg\"><table class=\"dk-karte-treatment-group\" data-treatment-list-item=\"true\"><colgroup><col class=\"dk-karte-p"
+                }
+              ]
+            },
+            {
+              "lv": 2,
+              "tag": "DIV",
+              "cls": "css-mlevy8",
+              "pos": {
+                "top": 1619,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1232
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "主訴・所見再診　通院精神療法6分(指定医)★在宅ワークと週一で千葉市の事業所へ。",
+                  "pos": {
+                    "top": 1619,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 228,
+                    "h": 1232
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-1eo882a",
+                  "text": "処置・行為診 再診料診 明細書発行体制等加算1回他 通院精神療法(30分未満)(",
+                  "pos": {
+                    "top": 1619,
+                    "left": 228
+                  },
+                  "size": {
+                    "w": 302,
+                    "h": 1232
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1b8i6hv\"><span>処置・行為</span><span><div class=\"css-dreh3w\"><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><but"
+                }
+              ]
+            },
+            {
+              "lv": 3,
+              "tag": "DIV",
+              "cls": "css-ybrhvy",
+              "pos": {
+                "top": 1586,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1264
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1qpw2rs",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認",
+                  "pos": {
+                    "top": 1586,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 32
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span>"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-mlevy8",
+                  "text": "主訴・所見再診　通院精神療法6分(指定医)★在宅ワークと週一で千葉市の事業所へ。",
+                  "pos": {
+                    "top": 1619,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1232
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1eo882a\"><div class=\"css-1b8i6hv\"><span>主訴・所見</span><span class=\"css-1ypjkz1\"></span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-ro"
+                }
+              ]
+            },
+            {
+              "lv": 4,
+              "tag": "DIV",
+              "cls": "css-11rg2nu",
+              "pos": {
+                "top": 1586,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1264
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-ybrhvy",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認主訴・所見再診　通院精神療法6分(",
+                  "pos": {
+                    "top": 1586,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1264
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1qpw2rs\"><span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span></div><div class=\"css-mlevy8\"><div cl"
+                }
+              ]
+            },
+            {
+              "lv": 5,
+              "tag": "DIV",
+              "cls": "",
+              "pos": {
+                "top": 1586,
+                "left": 0
+              },
+              "size": {
+                "w": 529,
+                "h": 1264
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-11rg2nu",
+                  "text": "心療内科木村友哉先生組合 精神通院（21）承認主訴・所見再診　通院精神療法6分(",
+                  "pos": {
+                    "top": 1586,
+                    "left": 0
+                  },
+                  "size": {
+                    "w": 529,
+                    "h": 1264
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-ybrhvy\"><div class=\"css-1qpw2rs\"><span>心療内科</span><span>木村友哉先生</span><span>組合 精神通院（21）</span><span></span><span>承認</span></div><div cl"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "text": "処置・行為",
+          "tag": "SPAN",
+          "cls": "",
+          "pos": {
+            "top": 113,
+            "left": 873
+          },
+          "parentLevels": [
+            {
+              "lv": 0,
+              "tag": "DIV",
+              "cls": "title-part",
+              "pos": {
+                "top": 105,
+                "left": 861
+              },
+              "size": {
+                "w": 419,
+                "h": 30
+              },
+              "childCount": 4,
+              "children": [
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "処置・行為",
+                  "pos": {
+                    "top": 113,
+                    "left": 873
+                  },
+                  "size": {
+                    "w": 68,
+                    "h": 13
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "処置・行為"
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "css-1ypjkz1",
+                  "text": "",
+                  "pos": {
+                    "top": 120,
+                    "left": 942
+                  },
+                  "size": {
+                    "w": 296,
+                    "h": 0
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": ""
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "",
+                  "pos": {
+                    "top": 120,
+                    "left": 1238
+                  },
+                  "size": {
+                    "w": 0,
+                    "h": 0
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": ""
+                },
+                {
+                  "tag": "SPAN",
+                  "cls": "",
+                  "text": "",
+                  "pos": {
+                    "top": 105,
+                    "left": 1238
+                  },
+                  "size": {
+                    "w": 30,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button class=\"css-1nnxsgs css-1jg2kh3 \" type=\"button\" data-size=\"md\" data-va"
+                }
+              ]
+            },
+            {
+              "lv": 1,
+              "tag": "DIV",
+              "cls": "css-1p36h0u",
+              "pos": {
+                "top": 105,
+                "left": 860
+              },
+              "size": {
+                "w": 420,
+                "h": 727
+              },
+              "childCount": 3,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "title-part",
+                  "text": "処置・行為",
+                  "pos": {
+                    "top": 105,
+                    "left": 861
+                  },
+                  "size": {
+                    "w": 419,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<span>処置・行為</span><span class=\"css-1ypjkz1\"></span><span></span><span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" data-state=\"closed\"><button"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-12fzq7s",
+                  "text": "",
+                  "pos": {
+                    "top": 135,
+                    "left": 861
+                  },
+                  "size": {
+                    "w": 419,
+                    "h": 662
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div><div class=\"css-4v5ll7\"><ul id=\"current-karte-treatment-list\" class=\"css-bwcahr css-429vzq\"></ul></div></div><div class=\"css-oxp859\"></div>"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "footer-part",
+                  "text": "処方箋備考に一包化を記載適応症追加",
+                  "pos": {
+                    "top": 796,
+                    "left": 861
+                  },
+                  "size": {
+                    "w": 419,
+                    "h": 36
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<label class=\"css-1voonsz\"><input type=\"checkbox\"><span><svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 16 16\" stroke=\"currentColor\">"
+                }
+              ]
+            },
+            {
+              "lv": 2,
+              "tag": "DIV",
+              "cls": "css-bdc73j",
+              "pos": {
+                "top": 105,
+                "left": 544
+              },
+              "size": {
+                "w": 736,
+                "h": 727
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-1e93myu",
+                  "text": "主訴・所見シェーマ追加",
+                  "pos": {
+                    "top": 105,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 316,
+                    "h": 727
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div data-header-part=\"true\"><span class=\"css-1ny9onj\">主訴・所見</span><div><div><button class=\"css-1nnxsgs css-1jg2kh3 css-65atgb\" type=\"button\" data-siz"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-1p36h0u",
+                  "text": "処置・行為処方箋備考に一包化を記載適応症追加",
+                  "pos": {
+                    "top": 105,
+                    "left": 860
+                  },
+                  "size": {
+                    "w": 420,
+                    "h": 727
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"title-part\"><span>処置・行為</span><span class=\"css-1ypjkz1\"></span><span></span><span><span class=\"css-lbdnvw\" id=\"undefined-tooltip-root\" dat"
+                }
+              ]
+            },
+            {
+              "lv": 3,
+              "tag": "DIV",
+              "cls": "css-16bq4yl",
+              "pos": {
+                "top": 75,
+                "left": 544
+              },
+              "size": {
+                "w": 736,
+                "h": 757
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-ztkqqy ",
+                  "text": "下書き心療内科木村友哉先生保険無し未承認FAX希望通常請求返戻再請求返戻再請求(",
+                  "pos": {
+                    "top": 75,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-b28jqc\"><span class=\"css-u74qx0\">下書き</span><span>心療内科</span><span>木村友哉先生</span><span>保険無し</span><span>未承認</span><span class=\"css-1vdi8"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-bdc73j",
+                  "text": "主訴・所見シェーマ追加処置・行為処方箋備考に一包化を記載適応症追加",
+                  "pos": {
+                    "top": 105,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 727
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-1e93myu\"><div data-header-part=\"true\"><span class=\"css-1ny9onj\">主訴・所見</span><div><div><button class=\"css-1nnxsgs css-1jg2kh3 css-65atg"
+                }
+              ]
+            },
+            {
+              "lv": 4,
+              "tag": "DIV",
+              "cls": "css-116vn3d",
+              "pos": {
+                "top": 45,
+                "left": 544
+              },
+              "size": {
+                "w": 736,
+                "h": 787
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-gd9ur8",
+                  "text": "2026/3/5 (木)保険無定期登録セット登録カルテ一覧",
+                  "pos": {
+                    "top": 45,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 30
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-cxnp6l\" data-karte-date-display=\"true\"><span>2026/3/5 (木)</span></div><ul class=\"css-11frrbt css-1gl3sme\"><li class=\"css-ufdrfe css-9b"
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-16bq4yl",
+                  "text": "下書き心療内科木村友哉先生保険無し未承認FAX希望通常請求返戻再請求返戻再請求(",
+                  "pos": {
+                    "top": 75,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 757
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-ztkqqy \"><div class=\"css-b28jqc\"><span class=\"css-u74qx0\">下書き</span><span>心療内科</span><span>木村友哉先生</span><span>保険無し</span><span>未承認</sp"
+                }
+              ]
+            },
+            {
+              "lv": 5,
+              "tag": "DIV",
+              "cls": "css-9vboi8",
+              "pos": {
+                "top": 45,
+                "left": 544
+              },
+              "size": {
+                "w": 736,
+                "h": 787
+              },
+              "childCount": 3,
+              "children": [
+                {
+                  "tag": "DIV",
+                  "cls": "css-116vn3d",
+                  "text": "2026/3/5 (木)保険無定期登録セット登録カルテ一覧下書き心療内科木村友哉",
+                  "pos": {
+                    "top": 45,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 787
+                  },
+                  "cursor": "auto",
+                  "hasSvg": true,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": "<div class=\"css-gd9ur8\"><div class=\"css-cxnp6l\" data-karte-date-display=\"true\"><span>2026/3/5 (木)</span></div><ul class=\"css-11frrbt css-1gl3sme\"><li "
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "",
+                  "text": "",
+                  "pos": {
+                    "top": 832,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 0
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": ""
+                },
+                {
+                  "tag": "DIV",
+                  "cls": "css-a92l0x",
+                  "text": "",
+                  "pos": {
+                    "top": 832,
+                    "left": 544
+                  },
+                  "size": {
+                    "w": 736,
+                    "h": 0
+                  },
+                  "cursor": "auto",
+                  "hasSvg": false,
+                  "hasOnClick": false,
+                  "role": null,
+                  "tagIsButton": false,
+                  "tagIsA": false,
+                  "innerHTML": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "pointerSvgElements": [
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1dacf6t",
+      "pos": {
+        "top": 3,
+        "left": 6
+      },
+      "size": {
+        "w": 36,
+        "h": 36
+      },
+      "cursor": "pointer",
+      "svgPath": "M.678 29.207S6.122 13.437 6.18 9.963c0 0-3.468 12.567-4.422 12.831-.949.264-1.98"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 438
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M13.194 1.548H2.796c-.715 0-1.293.584-1.293 1.299l-.006 11.698 2.598-2.598h9.099"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 480
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M20.998 3.976v7.273a.925.925 0 0 1-.263.647.89.89 0 0 1-.636.268h-.898l-2.058 2."
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 522
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M20.009 3.006h-9.955a.881.881 0 0 0-.632.268.93.93 0 0 0-.261.649v3.283h1.107v-3"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 564
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M9 11.5v2H7v-2zM9 17.5v-2H7v2zM11 11.5h2v2h-2zM13 15.5h-2v2h2zM17 11.5v2h-2v-2zM"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 606
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M5.64 10.032h-.864v1.794h.883c.533 0 .843-.291.843-.883 0-.572-.29-.911-.863-.91"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1023
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "m18.864 12.606-3.182-3.181-4.243 4.242a4.5 4.5 0 0 0 0 6.364l2.122 2.122A7.5 7.5"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1065
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M3.5 13.75h9v-1.5H8.75v-5.4l1.2 1.2L11 7 8 4 5 7l1.05 1.05 1.2-1.2v5.4H3.5zM2 10"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1107
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M3 3.5h15.522v5H21v9.95c0 .963-.53 2.03-1.485 2.407A.995.995 0 0 1 19 21H8a5 5 0"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1149
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M7.621 9.544a4.636 4.636 0 0 1 1.092-.814c2.17-1.196 4.945-.565 6.34 1.55l-1.698"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1191
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M15.357 6.33a6.383 6.383 0 1 1-9.027 9.027 6.383 6.383 0 0 1 9.027-9.028Zm2.279 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1233
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M5 11c1.103 0 2-.897 2-2s-.897-2-2-2-2 .897-2 2 .897 2 2 2m14 0c1.103 0 2-.897 2"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1275
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M19 3H5a2 2 0 0 0-2 2v12h1.38a4.81 4.81 0 0 1 4.42-2.88h.59a6.33 6.33 0 0 0 5.21"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1317
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2m6-6v-5c0-3.07-1.63-5.64-4.5-6.32V2.5h-3v2"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1359
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M11 18h2v-2h-2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1414
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M14.93 2H7.898C4.668 2 2 4.668 2 7.898c0 2.955 2.236 5.405 5.082 5.803.179.084.6"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 9,
+        "left": 1456
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M19 9h-4V3H9v6H5l7 7zM5 18v2h14v-2z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1pkfw9y",
+      "pos": {
+        "top": 11,
+        "left": 1568
+      },
+      "size": {
+        "w": 20,
+        "h": 20
+      },
+      "cursor": "pointer",
+      "svgPath": "M7.982 8 6 9.982 12.018 16l6.018-6.018L16.054 8l-4.036 4.036z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 111,
+        "left": 451
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M19 9h-4V3H9v6H5l7 7zM5 18v2h14v-2z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 111,
+        "left": 484
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M5 21c-.55 0-1.02-.196-1.412-.587A1.926 1.926 0 0 1 3 19v-4c0-.55.196-1.02.587-1"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1pkfw9y",
+      "pos": {
+        "top": 108,
+        "left": 516
+      },
+      "size": {
+        "w": 20,
+        "h": 20
+      },
+      "cursor": "pointer",
+      "svgPath": "M7 9h10l-5 6.354z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 200,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 200,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 200,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 230,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 230,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 230,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 260,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 260,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 260,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 290,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 290,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 290,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 290,
+        "left": 483
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 320,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 320,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 320,
+        "left": 483
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 350,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 350,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 350,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 380,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 380,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 380,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 410,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 410,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 410,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 410,
+        "left": 483
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 440,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 440,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 440,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 470,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 470,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 470,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 470,
+        "left": 483
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 500,
+        "left": 483
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 530,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 530,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 530,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 560,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 560,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 560,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 590,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 590,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 590,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 620,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 620,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 620,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 650,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 650,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 650,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 680,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 680,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 680,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 710,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 710,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 710,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 740,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 740,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 740,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 770,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 770,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 770,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 800,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 800,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 800,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 830,
+        "left": 292
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 830,
+        "left": 317
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 830,
+        "left": 458
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10m-11.157 "
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 148,
+        "left": 469
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M21 9.712a.2.2 0 0 1-.2.2h-5.398a.5.5 0 0 1-.358-.848l1.915-1.972c-2.73-2.7-7.15"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 148,
+        "left": 499
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M19.575 9.326 15.2 4.976 16.45 3.7a2.32 2.32 0 0 1 1.638-.7c.641-.017 1.22.216 1"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 211,
+        "left": 198
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M15 18v-4.5H9A4.5 4.5 0 0 0 4.5 18v3A7.5 7.5 0 0 1 9 7.5h6V3l7.5 7.5z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 211,
+        "left": 499
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M15 18v-4.5H9A4.5 4.5 0 0 0 4.5 18v3A7.5 7.5 0 0 1 9 7.5h6V3l7.5 7.5z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 280,
+        "left": 469
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M21 9.712a.2.2 0 0 1-.2.2h-5.398a.5.5 0 0 1-.358-.848l1.915-1.972c-2.73-2.7-7.15"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 280,
+        "left": 499
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M19.575 9.326 15.2 4.976 16.45 3.7a2.32 2.32 0 0 1 1.638-.7c.641-.017 1.22.216 1"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 342,
+        "left": 198
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M15 18v-4.5H9A4.5 4.5 0 0 0 4.5 18v3A7.5 7.5 0 0 1 9 7.5h6V3l7.5 7.5z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 342,
+        "left": 499
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M15 18v-4.5H9A4.5 4.5 0 0 0 4.5 18v3A7.5 7.5 0 0 1 9 7.5h6V3l7.5 7.5z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1hhf0xy",
+      "pos": {
+        "top": 52,
+        "left": 724
+      },
+      "size": {
+        "w": 15,
+        "h": 15
+      },
+      "cursor": "pointer",
+      "svgPath": "M19 7.333 16.667 5 12 9.667 7.333 5 5 7.333 9.667 12 5 16.667 7.333 19 12 14.333"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1j11snk",
+      "pos": {
+        "top": 51,
+        "left": 753
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M13 11h9v2h-9v9h-2v-9H2v-2h9V2h2z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 51,
+        "left": 1014
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M21 9.712a.2.2 0 0 1-.2.2h-5.398a.5.5 0 0 1-.358-.848l1.915-1.972c-2.73-2.7-7.15"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 81,
+        "left": 1244
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M19.575 9.326 15.2 4.976 16.45 3.7a2.32 2.32 0 0 1 1.638-.7c.641-.017 1.22.216 1"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 111,
+        "left": 734
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M2 11v2h20v-2z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 111,
+        "left": 794
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M13 11h9v2h-9v9h-2v-9H2v-2h9V2h2z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 111,
+        "left": 824
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M7 21c-.55 0-1.02-.196-1.412-.587A1.926 1.926 0 0 1 5 19V6H4V4h5V3h6v1h5v2h-1v13"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-16k99u2",
+      "pos": {
+        "top": 111,
+        "left": 1244
+      },
+      "size": {
+        "w": 18,
+        "h": 18
+      },
+      "cursor": "pointer",
+      "svgPath": "M7 21c-.55 0-1.02-.196-1.412-.587A1.926 1.926 0 0 1 5 19V6H4V4h5V3h6v1h5v2h-1v13"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "",
+      "pos": {
+        "top": 806,
+        "left": 873
+      },
+      "size": {
+        "w": 16,
+        "h": 16
+      },
+      "cursor": "pointer",
+      "svgPath": "M2.29 7l4.24 4.24l7.07 -7.07"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 787,
+        "left": 1298
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M6 19h6.707c.21.742.572 1.421 1.05 2H4V3h16v9.375A5.488 5.488 0 0 0 18 12V5H6z"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 787,
+        "left": 1346
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M4.65 4h4.905l2.46 5.355L14.445 4h4.905l-3.75 6.795h3.195v2.37H14.28v1.305h4.515"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 787,
+        "left": 1394
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M17.75 20v-2.25h-3A2.25 2.25 0 0 0 12.5 20v1.5a3.75 3.75 0 0 1 2.25-6.75h3V12.5l"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 787,
+        "left": 1465
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M17 3H3v18h18V7zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3m3-10H"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 787,
+        "left": 1513
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M2 8v9h4v4h12v-4h4V8zm14 11H8v-5h8zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45"
+    },
+    {
+      "parentTag": "SPAN",
+      "parentCls": "css-1f2tk15",
+      "pos": {
+        "top": 787,
+        "left": 1561
+      },
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "cursor": "pointer",
+      "svgPath": "M12.61 21 22 12l-9.39-9-3.076 2.965 4.44 4.273H3v3.524h10.974l-4.44 4.273z"
+    }
+  ]
+}
