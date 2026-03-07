@@ -12,9 +12,13 @@
 const { chromium } = require("playwright");
 const pdfParse = require("pdf-parse");
 const { PDFDocument } = require("pdf-lib");
+const { spawn } = require("child_process");
 
 // ── 設定 ─────────────────────────────────────────
 const CDP_URL = "http://127.0.0.1:9222";
+const DEBUG_PORT = 9222;
+const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+const CHROME_PROFILE = "C:\\Users\\ykimu\\AppData\\Local\\Google\\Chrome\\DigikarAuto";
 const POLL_INTERVAL_MS = 2_000; // モーダル監視間隔
 const CDP_RETRY_INTERVAL_MS = 10_000; // Chrome 未起動時のリトライ間隔
 const PDF_TAB_TIMEOUT_MS = 15_000;
@@ -37,14 +41,20 @@ async function mainLoop() {
   log("print-rx 常駐開始");
 
   while (true) {
-    // ── Chrome 接続を試みる ──
+    // ── CDP 接続を試みる。なければ Chrome を起動 ──
     let browser;
     try {
       browser = await chromium.connectOverCDP(CDP_URL);
     } catch {
-      log("Chrome 待機中...(CDP未検出)");
-      await sleep(CDP_RETRY_INTERVAL_MS);
-      continue;
+      log("CDP 未検出 → Chrome を起動します...");
+      await launchChrome();
+      try {
+        browser = await chromium.connectOverCDP(CDP_URL);
+      } catch {
+        log("Chrome 起動待ち...");
+        await sleep(CDP_RETRY_INTERVAL_MS);
+        continue;
+      }
     }
 
     log("Chrome 接続OK");
@@ -60,6 +70,33 @@ async function mainLoop() {
     log("再接続を試みます...");
     await sleep(CDP_RETRY_INTERVAL_MS);
   }
+}
+
+// ══════════════════════════════════════════════════
+// Chrome 起動
+// ══════════════════════════════════════════════════
+
+async function launchChrome() {
+  const child = spawn(CHROME_PATH, [
+    `--remote-debugging-port=${DEBUG_PORT}`,
+    "--no-first-run",
+    `--user-data-dir=${CHROME_PROFILE}`,
+    "https://digikar.jp/reception/",
+  ], { detached: true, stdio: "ignore" });
+  child.unref();
+
+  // CDP ポートが応答するまで待つ（最大30秒）
+  for (let i = 0; i < 30; i++) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/version`);
+      if (res.ok) {
+        log("Chrome 起動OK");
+        return;
+      }
+    } catch {}
+    await sleep(1000);
+  }
+  log("Chrome 起動タイムアウト（リトライします）");
 }
 
 // ══════════════════════════════════════════════════
