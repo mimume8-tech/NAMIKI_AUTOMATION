@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
   "scripts": {
     "adhd-rx": "node scripts/adhd_distribution_auto.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -14,18 +17,15 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/mimume8-tech/NAMIKI_AUTOMATION/issues"
   },
   "homepage": "https://github.com/mimume8-tech/NAMIKI_AUTOMATION#readme",
   "dependencies": {
-<<<<<<< Updated upstream
-    "playwright": "^1.58.2"
-=======
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "playwright": "^1.58.2",
     "xlsx": "^0.18.5"
->>>>>>> Stashed changes
   }
 }
