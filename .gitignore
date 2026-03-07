@@ -3,5 +3,6 @@ Thumbs.db
 *.log
 .env
 .env.*
+scripts/adhd_distribution_auto.config.json
 node_modules/
 .vscode/
