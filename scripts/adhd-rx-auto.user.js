@@ -1,541 +1,381 @@
 // ==UserScript==
 // @name         ADHD適正流通 処方登録 半自動化
 // @namespace    https://adhd-vcdcs.jp/
-// @version      1.0.0
+// @version      3.0.0
 // @description  Login→TOP→患者検索→患者詳細→施設確認→処方登録を半自動化
 // @match        https://www.adhd-vcdcs.jp/*
 // @match        https://adhd-vcdcs.jp/*
 // @grant        none
-// @run-at       document-idle
+// @run-at       document-end
 // ==/UserScript==
 
 (() => {
   'use strict';
 
-  // 多重起動防止
   if (window.__ADHD_RX_AUTO__) return;
   window.__ADHD_RX_AUTO__ = true;
 
-  const LOG_PREFIX = '[ADHD-RX]';
-  const log = (...args) => console.log(LOG_PREFIX, ...args);
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const LOG = '[ADHD-RX]';
+  const log = (...a) => console.log(LOG, ...a);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  // ── ステータスUI ──────────────────────────────
-  function createStatusBadge() {
-    const el = document.createElement('div');
-    el.id = 'adhd-rx-auto-status';
-    Object.assign(el.style, {
-      position: 'fixed',
-      bottom: '12px',
-      right: '12px',
-      padding: '8px 14px',
-      background: 'rgba(25,118,210,0.92)',
-      color: '#fff',
-      fontSize: '13px',
-      fontWeight: 'bold',
-      borderRadius: '8px',
-      zIndex: '2147483000',
-      fontFamily: '"Yu Gothic UI","Meiryo",sans-serif',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-      transition: 'opacity 0.3s',
-      maxWidth: '400px',
-    });
-    document.body.appendChild(el);
-    return el;
-  }
+  // ── 認証情報 ───────────────────────────────────
+  const LOGIN_ID = 'adhd491995';
+  const LOGIN_PW = 'Ykimura1183';
 
-  let statusEl = null;
-  function setStatus(msg, color) {
-    if (!statusEl) statusEl = createStatusBadge();
-    statusEl.textContent = msg;
-    if (color) statusEl.style.background = color;
+  // ── ステータスバッジ ──────────────────────────
+  let badge = null;
+  function show(msg, bg) {
+    if (!badge) {
+      badge = document.createElement('div');
+      Object.assign(badge.style, {
+        position: 'fixed', bottom: '12px', right: '12px',
+        padding: '8px 14px', color: '#fff', fontSize: '13px',
+        fontWeight: 'bold', borderRadius: '8px', zIndex: '2147483000',
+        fontFamily: '"Yu Gothic UI","Meiryo",sans-serif',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)', maxWidth: '500px',
+      });
+      document.body.appendChild(badge);
+    }
+    badge.textContent = msg;
+    badge.style.opacity = '1';
+    badge.style.background = bg || 'rgba(25,118,210,0.92)';
     log(msg);
   }
-
-  function fadeStatus() {
-    if (statusEl) {
-      setTimeout(() => { statusEl.style.opacity = '0.4'; }, 3000);
-    }
-  }
+  function fade() { if (badge) setTimeout(() => { badge.style.opacity = '0.4'; }, 4000); }
+  const BLUE = 'rgba(25,118,210,0.92)';
+  const GREEN = 'rgba(46,125,50,0.92)';
+  const RED = 'rgba(211,47,47,0.92)';
+  const ORANGE = 'rgba(255,152,0,0.92)';
 
   // ── ユーティリティ ─────────────────────────────
-  function waitForElement(selector, timeoutMs = 10000) {
-    return new Promise((resolve, reject) => {
-      const el = document.querySelector(selector);
-      if (el) return resolve(el);
-
-      const observer = new MutationObserver(() => {
-        const el = document.querySelector(selector);
-        if (el) {
-          observer.disconnect();
-          clearTimeout(timer);
-          resolve(el);
-        }
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-
-      const timer = setTimeout(() => {
-        observer.disconnect();
-        reject(new Error(`waitForElement timeout: ${selector}`));
-      }, timeoutMs);
-    });
-  }
-
-  function clickButton(btn) {
-    if (!btn) return false;
-    btn.scrollIntoView({ block: 'center', behavior: 'auto' });
-    btn.click();
-    return true;
-  }
-
-  function getTodayStr() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}/${mm}/${dd}`;
-  }
-
-  function setInputValue(input, value) {
-    const proto = input.tagName === 'TEXTAREA'
-      ? HTMLTextAreaElement.prototype
-      : HTMLInputElement.prototype;
-    const desc = Object.getOwnPropertyDescriptor(proto, 'value');
-    if (desc && desc.set) {
-      desc.set.call(input, value);
-    } else {
-      input.value = value;
-    }
+  function setVal(input, value) {
+    input.focus();
+    input.value = value;
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
     input.dispatchEvent(new Event('blur', { bubbles: true }));
   }
 
-  // ── 前回処方データの保存/取得 ──────────────────
-  const STORAGE_KEY = 'adhd_rx_prev_prescription';
-
-  function savePrevPrescription(data) {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  function click(el) {
+    if (!el) return false;
+    el.scrollIntoView({ block: 'center' });
+    el.click();
+    return true;
   }
 
-  function loadPrevPrescription() {
-    try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+  // ── 前回処方データ(sessionStorage) ─────────────
+  const SKEY = 'adhd_rx_prev';
+  function savePrev(d) { sessionStorage.setItem(SKEY, JSON.stringify(d)); }
+  function loadPrev() {
+    try { const r = sessionStorage.getItem(SKEY); return r ? JSON.parse(r) : null; }
+    catch { return null; }
   }
 
   // ── ページ判定 ─────────────────────────────────
   const path = location.pathname;
-  const url = location.href;
-
-  const isLoginPage = path.includes('/login');
-  const isTopPage = path === '/top' || path === '/top/';
-  const isPatientSearchPage = path.includes('/prescription_registration/index');
-  const isPatientDetailPage = path.includes('/prescription_registration/detail');
-  const isSelectFacilityPage = path.includes('/prescription_registration/select_facility');
-  const isCreatePage = path.includes('/prescription_registration/create');
-
-  // ── ログイン認証情報 ────────────────────────────
-  const LOGIN_ID = 'adhd491995';
-  const LOGIN_PW = 'Ykimura1183';
-
-  // ── フィールドに値を直接セットする ─────────────
-  function forceSetField(field, value) {
-    field.focus();
-    field.value = '';
-    // ネイティブsetterで確実にセット
-    const proto = HTMLInputElement.prototype;
-    const desc = Object.getOwnPropertyDescriptor(proto, 'value');
-    if (desc && desc.set) {
-      desc.set.call(field, value);
-    } else {
-      field.value = value;
-    }
-    field.dispatchEvent(new Event('input', { bubbles: true }));
-    field.dispatchEvent(new Event('change', { bubbles: true }));
-    field.dispatchEvent(new Event('blur', { bubbles: true }));
-  }
+  log('path:', path);
 
   // ══════════════════════════════════════════════
-  // 1. ログインページ → ID/PW入力 → Loginクリック
+  // 1. ログイン
   // ══════════════════════════════════════════════
-  async function handleLoginPage() {
-    setStatus('ログイン中...', 'rgba(25,118,210,0.92)');
-    await sleep(1000);
+  async function doLogin() {
+    show('ログイン中...', BLUE);
+    await sleep(1500);
 
     const form = document.querySelector('form');
-    if (!form) {
-      setStatus('フォームが見つかりません', 'rgba(211,47,47,0.92)');
-      return;
-    }
+    if (!form) { show('ERROR: form not found', RED); return; }
 
-    const idField = form.querySelector('input[type="text"]');
-    const pwField = form.querySelector('input[type="password"]');
+    // input一覧をログ
+    const inputs = [...form.querySelectorAll('input')];
+    inputs.forEach((inp, i) => log(`input[${i}] type=${inp.type} name=${inp.name} id=${inp.id}`));
 
-    if (!idField || !pwField) {
-      setStatus('ID/PWフィールドが見つかりません', 'rgba(211,47,47,0.92)');
-      return;
-    }
+    const idF = inputs.find(i => i.type === 'text');
+    const pwF = inputs.find(i => i.type === 'password');
+    if (!idF || !pwF) { show('ERROR: ID/PW field not found', RED); return; }
 
-    // スクリプトから直接値をセット（オートフィルに頼らない）
-    forceSetField(idField, LOGIN_ID);
+    setVal(idF, LOGIN_ID);
     await sleep(200);
-    forceSetField(pwField, LOGIN_PW);
+    setVal(pwF, LOGIN_PW);
     await sleep(200);
 
-    log(`ID: "${idField.value}", PW: ${'*'.repeat(pwField.value.length)}`);
+    log(`ID="${idF.value}" PW_len=${pwF.value.length}`);
+    if (!idF.value || !pwF.value) { show('ERROR: value set failed', RED); return; }
 
-    const loginBtn = form.querySelector(
-      'button[formaction*="login/login"], ' +
-      'button.btn-adhd[type="submit"]'
-    );
+    // ボタン探索
+    const btns = [...form.querySelectorAll('button, input[type="submit"]')];
+    btns.forEach((b, i) => log(`btn[${i}] tag=${b.tagName} type=${b.type} text="${(b.textContent||b.value||'').trim()}" formaction=${b.getAttribute('formaction')}`));
 
-    if (!loginBtn) {
-      setStatus('Loginボタンが見つかりません', 'rgba(211,47,47,0.92)');
-      return;
-    }
+    const loginBtn =
+      btns.find(b => b.getAttribute('formaction')?.includes('login')) ||
+      btns.find(b => b.type === 'submit') ||
+      btns.find(b => /login/i.test(b.textContent || b.value || ''));
 
-    // requestSubmitでsubmitイベントハンドラも発火させる
-    if (typeof form.requestSubmit === 'function') {
-      try {
-        form.requestSubmit(loginBtn);
-      } catch {
-        loginBtn.click();
-      }
-    } else {
-      loginBtn.click();
-    }
-    setStatus('ログイン送信完了', 'rgba(46,125,50,0.92)');
+    if (!loginBtn) { show('ERROR: Login button not found', RED); return; }
+
+    log('Clicking:', loginBtn.textContent?.trim());
+    show('ログイン送信中...', BLUE);
+    loginBtn.click();
   }
 
   // ══════════════════════════════════════════════
-  // 2. TOPページ → 処方登録ボタンをクリック
+  // 2. TOPページ → 処方登録
   // ══════════════════════════════════════════════
-  async function handleTopPage() {
-    setStatus('TOP画面 → 処方登録へ移動中...', 'rgba(25,118,210,0.92)');
+  async function doTop() {
+    show('TOP → 処方登録へ...', BLUE);
     await sleep(800);
 
-    // 処方登録ボタンを探す
-    const btn = document.querySelector(
-      'button[formaction*="prescription_registration/index"]'
-    );
+    // formaction で探す
+    let btn = document.querySelector('button[formaction*="prescription_registration"]');
+    if (btn) { click(btn); show('処方登録クリック', GREEN); return; }
 
-    if (btn) {
-      clickButton(btn);
-      setStatus('処方登録クリック完了', 'rgba(46,125,50,0.92)');
+    // aタグで探す
+    for (const a of document.querySelectorAll('a')) {
+      if (a.textContent.includes('処方登録') || a.href?.includes('prescription_registration')) {
+        a.click(); show('処方登録リンク', GREEN); return;
+      }
+    }
+
+    // テキストで探す
+    for (const b of document.querySelectorAll('button')) {
+      if (b.textContent.includes('処方登録')) { click(b); show('処方登録クリック', GREEN); return; }
+    }
+
+    show('処方登録ボタンが見つかりません', RED);
+  }
+
+  // ══════════════════════════════════════════════
+  // 3. 患者検索 (手動入力→検索→自動選択)
+  // ══════════════════════════════════════════════
+  async function doSearch() {
+    await sleep(1500);
+
+    // テーブル内の「選択」ボタンを全て集める
+    const selectBtns = [];
+    for (const b of document.querySelectorAll('button')) {
+      if (b.textContent.trim().includes('選択')) selectBtns.push(b);
+    }
+
+    log(`選択ボタン数: ${selectBtns.length}`);
+
+    if (selectBtns.length === 1) {
+      // 選択ボタンが1つだけ → 自動クリック
+      show('患者を自動選択中...', BLUE);
+      await sleep(500);
+      click(selectBtns[0]);
+      show('選択完了', GREEN);
+    } else if (selectBtns.length > 1) {
+      show(`${selectBtns.length}件: 患者を選択してください`, ORANGE);
+      fade();
     } else {
-      // ボタンがformの中にある場合、formをsubmitする
-      const allButtons = document.querySelectorAll('button');
-      for (const b of allButtons) {
-        if (b.textContent.trim().includes('処方登録')) {
-          clickButton(b);
-          setStatus('処方登録クリック完了', 'rgba(46,125,50,0.92)');
-          return;
-        }
-      }
-      setStatus('処方登録ボタンが見つかりません', 'rgba(211,47,47,0.92)');
+      show('患者IDを入力して検索してください', ORANGE);
+      fade();
     }
   }
 
   // ══════════════════════════════════════════════
-  // 3. 患者検索ページ → 選択ボタンが出たら自動クリック
+  // 4. 患者詳細 → 前回処方を保存 → 処方入力クリック
   // ══════════════════════════════════════════════
-  async function handlePatientSearchPage() {
-    setStatus('患者検索画面: 患者IDを入力し検索してください', 'rgba(255,152,0,0.92)');
-
-    // 選択ボタンが出現するのを監視
-    const observer = new MutationObserver(async () => {
-      const selectBtn = document.querySelector(
-        '#searchTable > tbody > tr > td:nth-child(1) > button'
-      );
-
-      if (selectBtn) {
-        observer.disconnect();
-        await sleep(500);
-        setStatus('患者を自動選択中...', 'rgba(25,118,210,0.92)');
-        clickButton(selectBtn);
-        setStatus('選択クリック完了', 'rgba(46,125,50,0.92)');
-      }
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    // 既に選択ボタンがあるか確認
-    await sleep(500);
-    const existingBtn = document.querySelector(
-      '#searchTable > tbody > tr > td:nth-child(1) > button'
-    );
-    if (existingBtn) {
-      observer.disconnect();
-      setStatus('患者を自動選択中...', 'rgba(25,118,210,0.92)');
-      clickButton(existingBtn);
-      setStatus('選択クリック完了', 'rgba(46,125,50,0.92)');
-    }
-  }
-
-  // ══════════════════════════════════════════════
-  // 4. 患者詳細ページ → 前回処方を抽出 → 処方入力クリック
-  // ══════════════════════════════════════════════
-  async function handlePatientDetailPage() {
-    setStatus('患者詳細画面 → 前回処方を取得中...', 'rgba(25,118,210,0.92)');
+  async function doDetail() {
+    show('患者詳細 → 処方データ取得中...', BLUE);
     await sleep(800);
 
-    // 前回処方情報を抽出（ページ内テキストから）
-    extractAndSavePreviousPrescription();
-
-    // 処方入力ボタンをクリック
-    const btn = document.querySelector(
-      'button[formaction*="prescription_registration/select_facility"]'
-    );
-
-    if (btn) {
-      await sleep(300);
-      clickButton(btn);
-      setStatus('処方入力クリック完了', 'rgba(46,125,50,0.92)');
-    } else {
-      // fallback
-      const allButtons = document.querySelectorAll('button.btn-adhd');
-      for (const b of allButtons) {
-        if (b.textContent.includes('処方入力')) {
-          clickButton(b);
-          setStatus('処方入力クリック完了', 'rgba(46,125,50,0.92)');
-          return;
-        }
-      }
-      setStatus('処方入力ボタンが見つかりません', 'rgba(211,47,47,0.92)');
-    }
-  }
-
-  function extractAndSavePreviousPrescription() {
-    // ページ内のテキストからコンサータの前回処方を探す
-    const bodyText = document.body.innerText || '';
-    const lines = bodyText.split('\n').map(l => l.trim()).filter(Boolean);
-
+    // 前回処方を抽出
     let prevData = null;
-
-    // 処方履歴テーブルがあれば解析
-    const tables = document.querySelectorAll('table');
-    for (const table of tables) {
-      const rows = table.querySelectorAll('tr');
-      for (const row of rows) {
-        const text = row.textContent || '';
-        if (/コンサータ|concerta/i.test(text)) {
-          // mgパターンを抽出: "72mg(18mg×1錠・27mg×2錠)" のような形式
-          const mgMatch = text.match(/(\d+mg\([^)]+\))/);
-          // 日分を抽出
-          const daysMatch = text.match(/(\d+)\s*日分/);
-
-          if (mgMatch || daysMatch) {
-            prevData = {
-              mgPattern: mgMatch ? mgMatch[1] : null,
-              days: daysMatch ? daysMatch[1] : null,
-              rawText: text.trim(),
-            };
-            log('前回処方を検出:', prevData);
-          }
+    for (const row of document.querySelectorAll('table tr')) {
+      const txt = row.textContent || '';
+      if (/コンサータ|concerta/i.test(txt)) {
+        const mg = txt.match(/(\d+mg\([^)]+\))/);
+        const days = txt.match(/(\d+)\s*日分/);
+        if (mg || days) {
+          prevData = { mgPattern: mg?.[1] || null, days: days?.[1] || null, raw: txt.trim().slice(0, 200) };
+          log('前回処方:', prevData);
         }
       }
     }
-
-    // テーブル以外のテキストからも探す
     if (!prevData) {
-      for (const line of lines) {
+      // テキストからも探す
+      for (const line of (document.body.innerText || '').split('\n')) {
         if (/コンサータ|concerta/i.test(line)) {
-          const mgMatch = line.match(/(\d+mg\([^)]+\))/);
-          const daysMatch = line.match(/(\d+)\s*日分/);
-          const simpleMgMatch = line.match(/(\d+)\s*mg/i);
-
-          if (mgMatch || daysMatch || simpleMgMatch) {
-            prevData = {
-              mgPattern: mgMatch ? mgMatch[1] : null,
-              days: daysMatch ? daysMatch[1] : null,
-              simpleMg: simpleMgMatch ? simpleMgMatch[1] : null,
-              rawText: line,
-            };
-            log('前回処方を検出(テキスト):', prevData);
+          const mg = line.match(/(\d+mg\([^)]+\))/);
+          const days = line.match(/(\d+)\s*日分/);
+          const smg = line.match(/(\d+)\s*mg/i);
+          if (mg || days || smg) {
+            prevData = { mgPattern: mg?.[1] || null, days: days?.[1] || null, simpleMg: smg?.[1] || null, raw: line.slice(0, 200) };
+            log('前回処方(text):', prevData);
+            break;
           }
         }
       }
     }
+    if (prevData) { savePrev(prevData); log('保存:', prevData); }
+    else { log('前回処方なし'); }
 
-    if (prevData) {
-      savePrevPrescription(prevData);
-      log('前回処方データを保存:', prevData);
-    } else {
-      log('前回処方データが見つかりませんでした');
+    // 処方入力ボタン
+    let btn = document.querySelector('button[formaction*="select_facility"]');
+    if (!btn) {
+      for (const b of document.querySelectorAll('button')) {
+        if (b.textContent.includes('処方入力') || b.textContent.includes('処方登録')) { btn = b; break; }
+      }
     }
+    if (btn) { await sleep(300); click(btn); show('処方入力クリック', GREEN); }
+    else { show('処方入力ボタンが見つかりません', RED); }
   }
 
   // ══════════════════════════════════════════════
-  // 5. 施設確認ページ → 選択ボタンをクリック
+  // 5. 施設確認 → 選択
   // ══════════════════════════════════════════════
-  async function handleSelectFacilityPage() {
-    setStatus('施設確認画面 → 自動選択中...', 'rgba(25,118,210,0.92)');
+  async function doFacility() {
+    show('施設確認 → 自動選択中...', BLUE);
     await sleep(800);
 
-    const btn = document.querySelector(
-      'button[formaction*="prescription_registration/create"][name="action"][value="create"]'
-    );
-
-    if (btn) {
-      clickButton(btn);
-      setStatus('施設選択クリック完了', 'rgba(46,125,50,0.92)');
-    } else {
-      // fallback
-      const allButtons = document.querySelectorAll('button.btn-adhd');
-      for (const b of allButtons) {
-        if (b.textContent.includes('選択') && !b.textContent.includes('戻る')) {
-          clickButton(b);
-          setStatus('施設選択クリック完了', 'rgba(46,125,50,0.92)');
-          return;
-        }
+    let btn = document.querySelector('button[formaction*="prescription_registration/create"]');
+    if (!btn) {
+      for (const b of document.querySelectorAll('button')) {
+        const t = b.textContent.trim();
+        if (t.includes('選択') && !t.includes('戻')) { btn = b; break; }
       }
-      setStatus('選択ボタンが見つかりません', 'rgba(211,47,47,0.92)');
     }
+    if (btn) { click(btn); show('施設選択完了', GREEN); }
+    else { show('選択ボタンが見つかりません', RED); }
   }
 
   // ══════════════════════════════════════════════
-  // 6. 処方登録(create)ページ → 処方日＋前回処方を入力
+  // 6. 処方登録 → 処方日 + 日分入力
   // ══════════════════════════════════════════════
-  async function handleCreatePage() {
-    setStatus('処方登録画面 → 自動入力中...', 'rgba(25,118,210,0.92)');
+  async function doCreate() {
+    show('処方登録 → 自動入力中...', BLUE);
     await sleep(1000);
 
-    // (A) 処方日に当日日付を入力
-    fillPrescriptionDate();
+    // ── 処方日を入力 ──
+    const today = new Date();
+    const todaySlash = `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+    const todayDash  = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 
-    // (B) 前回処方データを取得して日分を入力
-    await sleep(500);
-    fillPreviousPrescription();
-
-    setStatus('自動入力完了！内容を確認して確認ボタンを押してください', 'rgba(46,125,50,0.92)');
-    fadeStatus();
-  }
-
-  function fillPrescriptionDate() {
-    const today = getTodayStr();
-
-    // 処方日の入力フィールドを探す
-    // date型のinputを優先
-    const dateInputs = document.querySelectorAll('input[type="date"], input[type="text"]');
-
-    for (const input of dateInputs) {
-      // 周辺テキストに「処方日」があるか確認
-      const parent = input.closest('tr, div, td, th, label');
-      const contextText = parent ? (parent.textContent || '') : '';
-
-      if (/処方日/.test(contextText)) {
-        if (input.type === 'date') {
-          // date型の場合 yyyy-mm-dd 形式
-          const d = new Date();
-          const dateVal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          setInputValue(input, dateVal);
-        } else {
-          setInputValue(input, today);
-        }
-        log('処方日を設定:', today);
-        return true;
+    let dateSet = false;
+    for (const inp of document.querySelectorAll('input[type="date"], input[type="text"]')) {
+      const ctx = inp.closest('tr, div, td, label')?.textContent || '';
+      if (/処方日/.test(ctx)) {
+        setVal(inp, inp.type === 'date' ? todayDash : todaySlash);
+        log('処方日設定:', todaySlash);
+        dateSet = true;
+        break;
       }
     }
-
-    // フォールバック: name属性等で探す
-    const fallback = document.querySelector(
-      'input[name*="date"], input[name*="prescri"], input[name*="shohou"]'
-    );
-    if (fallback) {
-      setInputValue(fallback, today);
-      log('処方日を設定(fallback):', today);
-      return true;
+    if (!dateSet) {
+      const fb = document.querySelector('input[name*="date"], input[name*="prescri"]');
+      if (fb) { setVal(fb, todaySlash); dateSet = true; }
     }
 
-    log('処方日フィールドが見つかりません');
-    return false;
-  }
+    // ── 日分を入力 ──
+    await sleep(500);
+    const prev = loadPrev();
+    log('前回処方データ:', prev);
 
-  function fillPreviousPrescription() {
-    const prev = loadPrevPrescription();
-
-    if (!prev) {
-      log('前回処方データがありません。手動で入力してください。');
-      setStatus('前回処方データなし: 手動で日分を入力してください', 'rgba(255,152,0,0.92)');
+    if (!prev || !prev.days) {
+      show(dateSet ? '処方日設定済。日分は手動で入力してください' : '手動で入力してください', ORANGE);
+      fade();
       return;
     }
 
-    log('前回処方データ:', prev);
+    // ページ内の全inputをスキャンして「日分」テキストの近くにあるものを探す
+    const dayFields = [];
+    for (const inp of document.querySelectorAll('input')) {
+      if (['hidden','submit','button','checkbox','radio','date','password'].includes(inp.type)) continue;
 
-    // mgPatternから対応する行を見つけて日分を入力
-    // ページ内のテーブル行をスキャンして、一致するmgパターンの日分フィールドに入力
-    const allRows = document.querySelectorAll('tr, div.form-row, div.row');
-
-    for (const row of allRows) {
-      const rowText = row.textContent || '';
-
-      // コンサータの行でmgパターンが一致するか
-      let matched = false;
-
-      if (prev.mgPattern && rowText.includes(prev.mgPattern)) {
-        matched = true;
-      } else if (prev.simpleMg) {
-        // "72mg" のようなシンプルなmg値で始まるパターンにマッチ
-        const re = new RegExp(prev.simpleMg + 'mg');
-        if (re.test(rowText)) {
-          matched = true;
-        }
+      // 方法A: 親要素のテキストに「日分」
+      const parent = inp.closest('tr, td, div, li, fieldset');
+      const pText = parent?.textContent || '';
+      if (/日分/.test(pText) && !/処方日/.test(pText)) {
+        dayFields.push({ input: inp, ctx: pText });
+        continue;
       }
 
-      if (matched && prev.days) {
-        // この行内のinputフィールド（日分）に値を入力
-        const inputs = row.querySelectorAll('input[type="text"], input[type="number"], input:not([type])');
-        for (const input of inputs) {
-          // 周辺に「日分」があるか確認
-          const nearText = (input.parentElement?.textContent || '') +
-                          (input.nextSibling?.textContent || '') +
-                          (input.nextElementSibling?.textContent || '');
-
-          if (/日分/.test(nearText) || inputs.length === 1) {
-            setInputValue(input, prev.days);
-            log(`日分を入力: ${prev.days} (${prev.mgPattern || prev.simpleMg + 'mg'})`);
-            return;
-          }
-        }
+      // 方法B: 直後のテキストに「日分」
+      const after = (inp.nextSibling?.textContent || '') + (inp.nextElementSibling?.textContent || '');
+      if (/日分/.test(after)) {
+        dayFields.push({ input: inp, ctx: pText + after });
       }
     }
 
-    // マッチしなかった場合: 全ての「日分」入力フィールドを列挙して候補表示
-    log('前回処方のmgパターンに一致する行が見つかりませんでした');
-    setStatus(`前回処方: ${prev.rawText || '不明'} → 手動で日分を入力してください`, 'rgba(255,152,0,0.92)');
+    log(`日分フィールド数: ${dayFields.length}`);
+    dayFields.forEach((f, i) => log(`  [${i}] name=${f.input.name} ctx="${f.ctx.slice(0,80)}"`));
+
+    if (dayFields.length === 1) {
+      setVal(dayFields[0].input, prev.days);
+      show(`処方日+日分(${prev.days})を自動入力しました`, GREEN);
+      fade();
+      return;
+    }
+
+    if (dayFields.length > 1) {
+      // mgパターンまたは「コンサータ」でマッチ
+      let filled = false;
+      for (const f of dayFields) {
+        if (
+          (prev.mgPattern && f.ctx.includes(prev.mgPattern)) ||
+          (prev.simpleMg && new RegExp(prev.simpleMg + '\\s*mg', 'i').test(f.ctx)) ||
+          /コンサータ|concerta/i.test(f.ctx)
+        ) {
+          setVal(f.input, prev.days);
+          log(`日分入力: ${prev.days}`);
+          filled = true;
+          break;
+        }
+      }
+      // マッチしなければ全部に入力
+      if (!filled) {
+        for (const f of dayFields) setVal(f.input, prev.days);
+      }
+      show(`処方日+日分(${prev.days})を自動入力しました`, GREEN);
+      fade();
+      return;
+    }
+
+    // name属性フォールバック
+    const nbInputs = document.querySelectorAll('input[name*="day"], input[name*="nichi"], input[name*="nissu"]');
+    if (nbInputs.length > 0) {
+      for (const inp of nbInputs) setVal(inp, prev.days);
+      show(`処方日+日分(${prev.days})を自動入力しました`, GREEN);
+      fade();
+      return;
+    }
+
+    show(`処方日設定済。日分(${prev.days})は手動で入力してください`, ORANGE);
+    fade();
   }
 
   // ══════════════════════════════════════════════
   // メインルーター
   // ══════════════════════════════════════════════
   async function main() {
-    log(`ページ検出: ${path}`);
+    // DOMが確実に使えるよう少し待つ
+    await sleep(300);
 
-    if (isLoginPage) {
-      await handleLoginPage();
-    } else if (isTopPage) {
-      await handleTopPage();
-    } else if (isPatientSearchPage) {
-      await handlePatientSearchPage();
-    } else if (isPatientDetailPage) {
-      await handlePatientDetailPage();
-    } else if (isSelectFacilityPage) {
-      await handleSelectFacilityPage();
-    } else if (isCreatePage) {
-      await handleCreatePage();
+    log(`path="${path}" href="${location.href}"`);
+
+    if (path.includes('/login')) {
+      log('→ ログインページ');
+      await doLogin();
+    } else if (path === '/top' || path === '/top/') {
+      log('→ TOPページ');
+      await doTop();
+    } else if (path.includes('/prescription_registration/index')) {
+      log('→ 患者検索ページ');
+      await doSearch();
+    } else if (path.includes('/prescription_registration/detail')) {
+      log('→ 患者詳細ページ');
+      await doDetail();
+    } else if (path.includes('/prescription_registration/select_facility')) {
+      log('→ 施設確認ページ');
+      await doFacility();
+    } else if (path.includes('/prescription_registration/create')) {
+      log('→ 処方登録ページ');
+      await doCreate();
     } else {
-      log('対象外のページです:', path);
+      log('対象外:', path);
     }
   }
 
-  // 起動
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', main, { once: true });
-  } else {
-    main();
-  }
+  main();
 })();

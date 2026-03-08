@@ -1,7 +1,8 @@
 /**
  * print-rx.js  常駐型・会計モーダル自動処理
  *
- * 通常プロファイルの Chrome を起動し、
+ * 専用プロファイルの Chrome を起動し、
+ * 起動前に通常プロファイルからブックマークを同期する。
  * digikar.jp の会計モーダルを監視。
  * 会計保存後の PDF について、ブラウザ上で選んだモードに応じて
  * 「処方箋のみ」または「全ページ」を印刷する。
@@ -11,17 +12,20 @@
  */
 
 const fs = require("fs");
+const path = require("path");
 const { chromium } = require("playwright");
 const { PDFParse } = require("pdf-parse");
 const { PDFDocument } = require("pdf-lib");
-const { execSync, spawn } = require("child_process");
+const { spawn } = require("child_process");
 
 // ── 設定 ─────────────────────────────────────────
 const CDP_URL = "http://127.0.0.1:9222";
 const DEBUG_PORT = 9222;
 const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-const CHROME_USER_DATA = "C:\\Users\\ykimu\\AppData\\Local\\Google\\Chrome\\User Data";
-const CHROME_PROFILE_DIRECTORY = "Default";
+const DEFAULT_CHROME_USER_DATA = "C:\\Users\\ykimu\\AppData\\Local\\Google\\Chrome\\User Data";
+const DEFAULT_CHROME_PROFILE_DIRECTORY = "Default";
+const DIGIKAR_USER_DATA = "C:\\Users\\ykimu\\AppData\\Local\\Google\\Chrome\\DigikarAuto";
+const DIGIKAR_PROFILE_DIRECTORY = "Default";
 const DIGIKAR_URL = "https://digikar.jp/reception/";
 const PATIENT_NAME = "木村友哉";
 const DEFAULT_PRINT_MODE = "rx_only";
@@ -32,6 +36,59 @@ const PDF_READY_WAIT_MS = 2_000;
 const PRINT_PANEL_ID = "__print_rx_mode_panel";
 const PRINT_PANEL_STYLE_ID = "__print_rx_mode_panel_style";
 const PRINT_MODE_STORAGE_KEY = "__print_rx_mode";
+const PRINT_PANEL_POSITION_KEY = "__print_rx_mode_panel_position";
+const ROOT_SYNC_FILES = ["Local State", "Last Version", "Last Browser"];
+const PROFILE_SYNC_FILES = [
+  "Bookmarks",
+  "Bookmarks.bak",
+  "Preferences",
+  "Secure Preferences",
+  "Login Data",
+  "Login Data-journal",
+  "Login Data For Account",
+  "Login Data For Account-journal",
+  "Web Data",
+  "Web Data-journal",
+  "Account Web Data",
+  "Account Web Data-journal",
+  "Affiliation Database",
+  "Affiliation Database-journal",
+  "Extension Cookies",
+  "Extension Cookies-journal",
+  "Favicons",
+  "Favicons-journal",
+  "History",
+  "History-journal",
+  "PreferredApps",
+  "Shortcuts",
+  "Shortcuts-journal",
+  "Top Sites",
+  "Top Sites-journal",
+  "trusted_vault.pb",
+  "Google Profile Picture.png",
+  "Google Profile.ico",
+];
+const PROFILE_SYNC_DIRS = [
+  "Accounts",
+  "Extension Rules",
+  "Extension Scripts",
+  "Extension State",
+  "Extensions",
+  "Local Extension Settings",
+  "Local Storage",
+  "IndexedDB",
+  "Managed Extension Settings",
+  "Network",
+  "Service Worker",
+  "Session Storage",
+  "Sessions",
+  "Storage",
+  "Sync App Settings",
+  "Sync Data",
+  "Sync Extension Settings",
+  "Web Applications",
+  "WebStorage",
+];
 // ─────────────────────────────────────────────────
 
 function log(msg) {
@@ -127,22 +184,11 @@ async function launchChrome() {
     return;
   }
 
+  prepareDigikarProfile();
   startChromeProcess();
-  if (await waitForDebugPort(8_000)) {
-    log("Chrome 起動OK");
-    return;
-  }
-
-  if (hasChromeProcess()) {
-    log("既存の Chrome が通常起動していたため、デバッグ付きで開き直します...");
-    killChromeProcesses();
-    await sleep(2_000);
-    startChromeProcess();
-  }
-
   const ready = await waitForDebugPort(30_000);
   if (!ready) {
-    throw new Error("Chrome を remote-debugging-port=9222 付きで起動できませんでした。");
+    throw new Error("Chrome を DigikarAuto プロファイルで起動できませんでした。");
   }
   log("Chrome 起動OK");
 }
@@ -156,8 +202,9 @@ function startChromeProcess() {
       "--no-first-run",
       "--new-window",
       "--kiosk-printing",
-      `--user-data-dir=${CHROME_USER_DATA}`,
-      `--profile-directory=${CHROME_PROFILE_DIRECTORY}`,
+      "--show-bookmark-bar",
+      `--user-data-dir=${DIGIKAR_USER_DATA}`,
+      `--profile-directory=${DIGIKAR_PROFILE_DIRECTORY}`,
       DIGIKAR_URL,
     ],
     { detached: true, stdio: "ignore" }
@@ -165,22 +212,105 @@ function startChromeProcess() {
   child.unref();
 }
 
-function hasChromeProcess() {
-  try {
-    const output = execSync('tasklist /FI "IMAGENAME eq chrome.exe"', {
-      stdio: ["ignore", "pipe", "ignore"],
-      encoding: "utf8",
-    });
-    return output.toLowerCase().includes("chrome.exe");
-  } catch {
-    return false;
+function prepareDigikarProfile() {
+  fs.mkdirSync(DIGIKAR_USER_DATA, { recursive: true });
+  fs.mkdirSync(getDigikarProfilePath(), { recursive: true });
+
+  syncRootFiles();
+  syncProfileFiles();
+  ensureBookmarkBarVisible();
+}
+
+function getDefaultProfilePath() {
+  return path.join(DEFAULT_CHROME_USER_DATA, DEFAULT_CHROME_PROFILE_DIRECTORY);
+}
+
+function getDigikarProfilePath() {
+  return path.join(DIGIKAR_USER_DATA, DIGIKAR_PROFILE_DIRECTORY);
+}
+
+function syncRootFiles() {
+  for (const fileName of ROOT_SYNC_FILES) {
+    const sourcePath = path.join(DEFAULT_CHROME_USER_DATA, fileName);
+    const targetPath = path.join(DIGIKAR_USER_DATA, fileName);
+    copyPath(sourcePath, targetPath, fileName === "Local State");
   }
 }
 
-function killChromeProcesses() {
+function syncProfileFiles() {
+  const sourceProfile = getDefaultProfilePath();
+  const targetProfile = getDigikarProfilePath();
+
+  for (const fileName of PROFILE_SYNC_FILES) {
+    const sourcePath = path.join(sourceProfile, fileName);
+    const targetPath = path.join(targetProfile, fileName);
+    copyPath(sourcePath, targetPath, ["Bookmarks", "Bookmarks.bak", "Preferences"].includes(fileName));
+  }
+
+  for (const dirName of PROFILE_SYNC_DIRS) {
+    const sourcePath = path.join(sourceProfile, dirName);
+    const targetPath = path.join(targetProfile, dirName);
+    copyPath(sourcePath, targetPath, dirName === "Extensions");
+  }
+}
+
+function copyPath(sourcePath, targetPath, verbose = false) {
+  if (!fs.existsSync(sourcePath)) {
+    return;
+  }
+
   try {
-    execSync("taskkill /F /T /IM chrome.exe", { stdio: "ignore" });
-  } catch {}
+    const stat = fs.statSync(sourcePath);
+    if (stat.isDirectory()) {
+      fs.cpSync(sourcePath, targetPath, { recursive: true, force: true });
+    } else {
+      fs.copyFileSync(sourcePath, targetPath);
+    }
+
+    if (verbose) {
+      log(`同期: ${path.basename(sourcePath)}`);
+    }
+  } catch (err) {
+    if (verbose) {
+      log(`同期失敗: ${path.basename(sourcePath)} (${err.message})`);
+    }
+  }
+}
+
+function ensureBookmarkBarVisible() {
+  const targetProfile = getDigikarProfilePath();
+  const prefsPath = path.join(targetProfile, "Preferences");
+  const defaultPrefsPath = path.join(getDefaultProfilePath(), "Preferences");
+
+  const basePrefs = readJsonFile(prefsPath) || readJsonFile(defaultPrefsPath) || {};
+  basePrefs.bookmark_bar = {
+    ...(basePrefs.bookmark_bar || {}),
+    show_on_all_tabs: true,
+  };
+  basePrefs.account_values = {
+    ...(basePrefs.account_values || {}),
+    bookmark_bar: {
+      ...((basePrefs.account_values || {}).bookmark_bar || {}),
+      show_on_all_tabs: true,
+    },
+  };
+
+  writeJsonFile(prefsPath, basePrefs);
+}
+
+function readJsonFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function writeJsonFile(filePath, value) {
+  fs.writeFileSync(filePath, JSON.stringify(value), "utf8");
 }
 
 // ══════════════════════════════════════════════════
@@ -262,15 +392,25 @@ async function isAccountingModalOpen(page) {
 
 async function ensurePrintModePanel(page) {
   await page.evaluate(
-    ({ panelId, styleId, storageKey, defaultMode }) => {
+    ({ panelId, styleId, storageKey, defaultMode, positionKey }) => {
       if (!document.body) {
         return;
       }
 
       const readMode = () => localStorage.getItem(storageKey) || defaultMode;
+      const readPosition = () => {
+        try {
+          return JSON.parse(localStorage.getItem(positionKey) || "null");
+        } catch {
+          return null;
+        }
+      };
       const writeMode = (mode) => {
         localStorage.setItem(storageKey, mode);
         window.__printRxMode = mode;
+      };
+      const writePosition = (position) => {
+        localStorage.setItem(positionKey, JSON.stringify(position));
       };
 
       const updatePanel = (panel) => {
@@ -299,47 +439,71 @@ async function ensurePrintModePanel(page) {
             width: 220px;
             padding: 12px;
             border-radius: 14px;
-            background: rgba(15, 23, 42, 0.95);
-            color: #f8fafc;
-            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.35);
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(15, 23, 42, 0.35);
+            color: #0f172a;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
             font-family: "Yu Gothic UI", "Segoe UI", sans-serif;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(6px);
+          }
+          #${panelId} .print-rx-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+            cursor: move;
+            user-select: none;
           }
           #${panelId} .print-rx-title {
-            margin: 0 0 8px;
+            margin: 0;
             font-size: 13px;
             font-weight: 700;
             letter-spacing: 0.02em;
           }
+          #${panelId} .print-rx-grip {
+            font-size: 12px;
+            color: rgba(15, 23, 42, 0.55);
+          }
           #${panelId} .print-rx-status {
             margin: 0 0 10px;
             font-size: 12px;
-            color: #cbd5e1;
+            color: rgba(15, 23, 42, 0.72);
           }
           #${panelId} .print-rx-actions {
             display: grid;
             grid-template-columns: 1fr;
             gap: 8px;
           }
-          #${panelId} button[data-mode] {
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            border-radius: 10px;
-            padding: 9px 10px;
+          #${panelId} button[data-mode],
+          #${panelId} button[data-role="reset-pos"] {
+            border: 1px solid rgba(15, 23, 42, 0.24);
+            border-radius: 9px;
+            padding: 8px 10px;
             font-size: 13px;
-            font-weight: 700;
-            color: #e2e8f0;
-            background: rgba(30, 41, 59, 0.9);
+            font-weight: 600;
+            color: #0f172a;
+            background: rgba(255, 255, 255, 0.24);
             cursor: pointer;
           }
           #${panelId} button[data-mode].is-active {
-            background: #0f766e;
-            border-color: #5eead4;
-            color: #f0fdfa;
+            background: rgba(15, 23, 42, 0.12);
+            border-color: rgba(15, 23, 42, 0.45);
+          }
+          #${panelId} .print-rx-footer {
+            margin-top: 8px;
+            display: flex;
+            justify-content: flex-end;
+          }
+          #${panelId} button[data-role="reset-pos"] {
+            padding: 5px 8px;
+            font-size: 11px;
+            background: transparent;
           }
           #${panelId} .print-rx-note {
             margin-top: 10px;
             font-size: 11px;
-            color: #94a3b8;
+            color: rgba(15, 23, 42, 0.62);
             line-height: 1.45;
           }
         `;
@@ -351,25 +515,100 @@ async function ensurePrintModePanel(page) {
         panel = document.createElement("aside");
         panel.id = panelId;
         panel.innerHTML = `
-          <div class="print-rx-title">印刷モード</div>
+          <div class="print-rx-header" data-role="drag-handle">
+            <div class="print-rx-title">印刷モード</div>
+            <div class="print-rx-grip">移動</div>
+          </div>
           <div class="print-rx-status" data-role="status"></div>
           <div class="print-rx-actions">
             <button type="button" data-mode="rx_only">処方箋のみ</button>
             <button type="button" data-mode="all_pages">全部印刷</button>
+          </div>
+          <div class="print-rx-footer">
+            <button type="button" data-role="reset-pos">位置を戻す</button>
           </div>
           <div class="print-rx-note">次に開く会計PDFへ適用します。</div>
         `;
 
         panel.addEventListener("click", (event) => {
           const button = event.target.closest("button[data-mode]");
-          if (!button) {
+          if (button) {
+            writeMode(button.dataset.mode);
+            updatePanel(panel);
             return;
           }
-          writeMode(button.dataset.mode);
-          updatePanel(panel);
+
+          const resetButton = event.target.closest('button[data-role="reset-pos"]');
+          if (resetButton) {
+            panel.style.top = "84px";
+            panel.style.right = "16px";
+            panel.style.left = "auto";
+            writePosition({ top: 84, right: 16, left: null });
+          }
         });
 
         document.body.appendChild(panel);
+
+        const handle = panel.querySelector('[data-role="drag-handle"]');
+        if (handle) {
+          handle.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0) {
+              return;
+            }
+
+            const rect = panel.getBoundingClientRect();
+            const offsetX = event.clientX - rect.left;
+            const offsetY = event.clientY - rect.top;
+            handle.setPointerCapture(event.pointerId);
+
+            const onMove = (moveEvent) => {
+              const left = Math.min(
+                Math.max(8, moveEvent.clientX - offsetX),
+                window.innerWidth - rect.width - 8
+              );
+              const top = Math.min(
+                Math.max(8, moveEvent.clientY - offsetY),
+                window.innerHeight - rect.height - 8
+              );
+              panel.style.left = `${left}px`;
+              panel.style.top = `${top}px`;
+              panel.style.right = "auto";
+            };
+
+            const onUp = () => {
+              handle.removeEventListener("pointermove", onMove);
+              handle.removeEventListener("pointerup", onUp);
+              handle.removeEventListener("pointercancel", onUp);
+              if (handle.hasPointerCapture(event.pointerId)) {
+                handle.releasePointerCapture(event.pointerId);
+              }
+              const finalRect = panel.getBoundingClientRect();
+              writePosition({
+                left: Math.round(finalRect.left),
+                top: Math.round(finalRect.top),
+                right: null,
+              });
+            };
+
+            handle.addEventListener("pointermove", onMove);
+            handle.addEventListener("pointerup", onUp);
+            handle.addEventListener("pointercancel", onUp);
+          });
+        }
+      }
+
+      const savedPosition = readPosition();
+      if (savedPosition) {
+        if (typeof savedPosition.left === "number") {
+          panel.style.left = `${savedPosition.left}px`;
+          panel.style.right = "auto";
+        } else if (typeof savedPosition.right === "number") {
+          panel.style.right = `${savedPosition.right}px`;
+        }
+
+        if (typeof savedPosition.top === "number") {
+          panel.style.top = `${savedPosition.top}px`;
+        }
       }
 
       writeMode(readMode());
@@ -380,6 +619,7 @@ async function ensurePrintModePanel(page) {
       styleId: PRINT_PANEL_STYLE_ID,
       storageKey: PRINT_MODE_STORAGE_KEY,
       defaultMode: DEFAULT_PRINT_MODE,
+      positionKey: PRINT_PANEL_POSITION_KEY,
     }
   );
 }
