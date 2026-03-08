@@ -148,24 +148,33 @@
   // 3. 患者検索 (手動入力→検索→自動選択)
   // ══════════════════════════════════════════════
   async function doSearch() {
-    await sleep(1500);
+    show('選択ボタンを待機中...', BLUE);
 
-    // テーブル内の「選択」ボタンを全て集める
-    const selectBtns = [];
-    for (const b of document.querySelectorAll('button')) {
-      if (b.textContent.trim().includes('選択')) selectBtns.push(b);
+    // ボタンが出現するまで最大15秒ポーリング（0.5秒間隔×30回）
+    let btns = [];
+    for (let i = 0; i < 30; i++) {
+      await sleep(500);
+      btns = [
+        ...document.querySelectorAll('#searchTable > tbody > tr > td:nth-child(1) > button'),
+      ];
+      if (btns.length === 0) btns = [...document.querySelectorAll('button[name="patId"]')];
+      if (btns.length === 0) btns = [...document.querySelectorAll('button[formaction*="detail"]')];
+
+      if (btns.length > 0) {
+        log(`ポーリング${i+1}回目で選択ボタン発見: ${btns.length}個`);
+        break;
+      }
     }
 
-    log(`選択ボタン数: ${selectBtns.length}`);
+    btns.forEach((b, i) => log(`  [${i}] formaction=${b.getAttribute('formaction')} value=${b.value}`));
 
-    if (selectBtns.length === 1) {
-      // 選択ボタンが1つだけ → 自動クリック
+    if (btns.length === 1) {
       show('患者を自動選択中...', BLUE);
-      await sleep(500);
-      click(selectBtns[0]);
+      await sleep(300);
+      click(btns[0]);
       show('選択完了', GREEN);
-    } else if (selectBtns.length > 1) {
-      show(`${selectBtns.length}件: 患者を選択してください`, ORANGE);
+    } else if (btns.length > 1) {
+      show(`${btns.length}件: 患者を選択してください`, ORANGE);
       fade();
     } else {
       show('患者IDを入力して検索してください', ORANGE);
