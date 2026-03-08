@@ -14,7 +14,7 @@ const fs = require("fs");
 const { chromium } = require("playwright");
 const { PDFParse } = require("pdf-parse");
 const { PDFDocument } = require("pdf-lib");
-const { spawn } = require("child_process");
+const { execSync, spawn } = require("child_process");
 
 // ── 設定 ─────────────────────────────────────────
 const CDP_URL = "http://127.0.0.1:9222";
@@ -127,6 +127,27 @@ async function launchChrome() {
     return;
   }
 
+  startChromeProcess();
+  if (await waitForDebugPort(8_000)) {
+    log("Chrome 起動OK");
+    return;
+  }
+
+  if (hasChromeProcess()) {
+    log("既存の Chrome が通常起動していたため、デバッグ付きで開き直します...");
+    killChromeProcesses();
+    await sleep(2_000);
+    startChromeProcess();
+  }
+
+  const ready = await waitForDebugPort(30_000);
+  if (!ready) {
+    throw new Error("Chrome を remote-debugging-port=9222 付きで起動できませんでした。");
+  }
+  log("Chrome 起動OK");
+}
+
+function startChromeProcess() {
   const child = spawn(
     CHROME_PATH,
     [
@@ -142,15 +163,24 @@ async function launchChrome() {
     { detached: true, stdio: "ignore" }
   );
   child.unref();
+}
 
-  const ready = await waitForDebugPort(30_000);
-  if (!ready) {
-    throw new Error(
-      "Chrome を通常プロファイルで起動できませんでした。Chrome が既に通常起動している場合はいったん閉じてください。"
-    );
+function hasChromeProcess() {
+  try {
+    const output = execSync('tasklist /FI "IMAGENAME eq chrome.exe"', {
+      stdio: ["ignore", "pipe", "ignore"],
+      encoding: "utf8",
+    });
+    return output.toLowerCase().includes("chrome.exe");
+  } catch {
+    return false;
   }
+}
 
-  log("Chrome 起動OK");
+function killChromeProcesses() {
+  try {
+    execSync("taskkill /F /T /IM chrome.exe", { stdio: "ignore" });
+  } catch {}
 }
 
 // ══════════════════════════════════════════════════
