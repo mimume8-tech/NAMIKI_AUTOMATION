@@ -6,7 +6,7 @@ echo    （タスクトレイのアイコンも右クリック→終了）
 echo.
 taskkill /F /IM chrome.exe >nul 2>&1
 timeout /t 3 /nobreak >nul
-start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\Users\ykimu\AppData\Local\Google\Chrome\User Data" --profile-directory=Default https://digikar.jp/reception/
+start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1 --new-window --kiosk-printing --user-data-dir="C:\Users\ykimu\AppData\Local\Google\Chrome\User Data" --profile-directory=Default https://digikar.jp/reception/
 echo Chrome を起動しました。
 echo デジカルにログインして受付画面を表示したら、
 echo 別のターミナルで node scripts/digikar_auto.js を実行してください。
