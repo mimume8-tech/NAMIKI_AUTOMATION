@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ADHD適正流通 処方登録 半自動化
 // @namespace    https://adhd-vcdcs.jp/
-// @version      4.0.0
+// @version      4.1.0
 // @description  Login→TOP→患者検索→患者詳細→施設確認→処方登録を半自動化
 // @match        https://www.adhd-vcdcs.jp/*
 // @match        https://adhd-vcdcs.jp/*
@@ -158,12 +158,21 @@
       await sleep(500);
 
       // 3つのセレクタで探す
-      btns = [...document.querySelectorAll('#searchTable > tbody > tr > td:nth-child(1) > button')];
-      if (!btns.length) btns = [...document.querySelectorAll('button[name="patId"]')];
-      if (!btns.length) btns = [...document.querySelectorAll('button[formaction*="detail"]')];
+      let allBtns = [...document.querySelectorAll('#searchTable > tbody > tr > td:nth-child(1) > button')];
+      if (!allBtns.length) allBtns = [...document.querySelectorAll('button[name="patId"]')];
+      if (!allBtns.length) allBtns = [...document.querySelectorAll('button[formaction*="detail"]')];
+
+      // DataTablesは非表示行もDOMに残すため、可視ボタンのみに絞り込む
+      btns = allBtns.filter(b => {
+        const tr = b.closest('tr');
+        if (tr && tr.style.display === 'none') return false;
+        if (tr && getComputedStyle(tr).display === 'none') return false;
+        if (b.offsetParent === null) return false;
+        return true;
+      });
 
       if (btns.length > 0) {
-        log(`ポーリング${i+1}回目: ${btns.length}個発見`);
+        log(`ポーリング${i+1}回目: 全${allBtns.length}個中 可視${btns.length}個発見`);
         break;
       }
     }
