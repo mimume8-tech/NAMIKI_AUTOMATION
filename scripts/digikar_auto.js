@@ -13,12 +13,16 @@ const { execSync, spawn } = require('child_process');
 const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
+const {
+  CHROME_PATH,
+  DIGIKAR_PROFILE_DIRECTORY,
+  DIGIKAR_USER_DATA,
+  prepareDigikarProfile,
+} = require('./digikar_profile');
 
 // ===== 設定 =====
-const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 // デバッグモードには専用プロファイルが必須（Chrome の仕様）
 // ログインは初回のみ。2回目以降はログイン状態が保持される
-const DIGIKAR_PROFILE = 'C:\\Users\\ykimu\\AppData\\Local\\Google\\Chrome\\DigikarAuto';
 const DEBUG_PORT = 9222;
 const PROCESSED_FILE = path.join(__dirname, 'processed.json');
 
@@ -59,12 +63,16 @@ async function waitForStable(page, ms = 1500) {
   console.log('Chrome を終了中...');
   try { execSync('taskkill /F /T /IM chrome.exe', { stdio: 'ignore' }); } catch {}
   await new Promise(r => setTimeout(r, 3000));
+  prepareDigikarProfile();
 
   console.log('Chrome をデバッグモードで起動中...');
   const child = spawn(CHROME_PATH, [
     `--remote-debugging-port=${DEBUG_PORT}`,
+    '--remote-debugging-address=127.0.0.1',
     '--no-first-run',
-    `--user-data-dir=${DIGIKAR_PROFILE}`,
+    '--new-window',
+    `--user-data-dir=${DIGIKAR_USER_DATA}`,
+    `--profile-directory=${DIGIKAR_PROFILE_DIRECTORY}`,
     'https://digikar.jp/reception/',
   ], { detached: true, stdio: 'ignore' });
   child.unref();

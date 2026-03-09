@@ -686,6 +686,13 @@
     panel.style.bottom = 'auto';
   }
 
+  function setPanelMinimized(panel, closeBtn, minimized) {
+    panel.classList.toggle('is-minimized', minimized);
+    closeBtn.textContent = minimized ? '+' : '-';
+    closeBtn.title = minimized ? 'open' : 'minimize';
+    closeBtn.setAttribute('aria-label', closeBtn.title);
+  }
+
   function createPanel() {
     if (document.getElementById(APP.id)) return;
 
@@ -693,7 +700,7 @@
     style.textContent = `
 #${APP.id}{
   position:fixed; right:12px; bottom:12px;
-  width:230px;
+  width:214px;
   background: rgba(255,255,255,0.01);
   border-radius:14px;
   border: 1px solid rgba(0,0,0,.22);
@@ -704,39 +711,80 @@
   z-index:2147483000;
   font-family:"Yu Gothic UI","Meiryo",sans-serif;
   color:#263238;
+  overflow:hidden;
+}
+#${APP.id}.is-minimized{
+  width:58px;
+  height:58px;
+  border-radius:999px;
 }
 #${APP.id} .dk-header{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:8px 10px;
+  position:relative;
+  z-index:3;
+  display:flex; align-items:center;
+  min-height:30px;
+  padding:8px 46px 2px 10px;
   background: rgba(255,255,255,0.01);
   cursor:grab;
+}
+#${APP.id}.is-minimized .dk-header{
+  min-height:58px;
+  padding:0;
+  justify-content:center;
+  cursor:pointer;
 }
 #${APP.id} .dk-title{
   font-size:12px; font-weight:900;
   color:#0b6b3a;
   text-shadow: 0 1px 0 rgba(255,255,255,.45);
 }
+#${APP.id}.is-minimized .dk-title{
+  display:none;
+}
 #${APP.id} .dk-close{
-  width:28px;height:28px;
-  border-radius:10px;
+  position:absolute;
+  top:7px;
+  right:8px;
+  z-index:4;
+  width:30px;height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
   background: rgba(255,255,255,0);
   border: 1px solid rgba(0,0,0,.22);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
   cursor:pointer;
-  font-size:16px;
+  font-size:18px;
+  font-weight:900;
+  line-height:1;
   color:#263238;
 }
+#${APP.id}.is-minimized .dk-close{
+  position:static;
+  width:42px;
+  height:42px;
+  font-size:24px;
+  box-shadow:
+    0 8px 18px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.45);
+}
 #${APP.id} .dk-body{
-  padding:10px;
+  position:relative;
+  z-index:1;
+  padding:8px 10px 10px;
   display:grid;
   grid-template-columns: 1fr 1fr;
-  gap:10px;
+  gap:8px;
+}
+#${APP.id}.is-minimized .dk-body{
+  display:none;
 }
 #${APP.id} .dk-btn{
-  height:56px;
+  height:48px;
   border:none;
-  border-radius:14px;
-  font-size:14px;
+  border-radius:12px;
+  font-size:13px;
   font-weight:900;
   color:#fff;
   cursor:pointer;
@@ -776,6 +824,7 @@
 
     const panel = document.createElement('div');
     panel.id = APP.id;
+    const saved = loadPanelState();
 
     panel.innerHTML = `
 <div class="dk-header">
@@ -795,10 +844,23 @@
     const statusEl = panel.querySelector('.dk-status');
     const closeBtn = panel.querySelector('[data-ui="close"]');
     state.ui = { panel, header, statusEl, closeBtn };
+    setPanelMinimized(panel, closeBtn, !!saved.minimized);
 
-    closeBtn.addEventListener('click', () => {
-      panel.remove();
-      setTimeout(() => { window.__DIGIKAR_MEMO_SEQ_TOOL__ = false; }, 0);
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const nextMinimized = !panel.classList.contains('is-minimized');
+      setPanelMinimized(panel, closeBtn, nextMinimized);
+      clampPanelToViewport(panel);
+      savePanelState({ minimized: nextMinimized });
+    });
+
+    header.addEventListener('click', (e) => {
+      if (!panel.classList.contains('is-minimized')) return;
+      if (e.target.closest('button')) return;
+      setPanelMinimized(panel, closeBtn, false);
+      clampPanelToViewport(panel);
+      savePanelState({ minimized: false });
     });
 
     panel.addEventListener('click', (e) => {
@@ -843,7 +905,6 @@
       savePanelState({ left: r.left, top: r.top });
     });
 
-    const saved = loadPanelState();
     if (typeof saved.left === 'number' && typeof saved.top === 'number') {
       panel.style.left = `${saved.left}px`;
       panel.style.top = `${saved.top}px`;
