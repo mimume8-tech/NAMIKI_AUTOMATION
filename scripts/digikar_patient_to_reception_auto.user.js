@@ -44,6 +44,7 @@
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const normalize = (value) => String(value ?? '').replace(/\s+/g, '');
   const flatText = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
+  const LEADING_EMOJI_RE = /^(?:[\p{Extended_Pictographic}\uFE0F\u200D])+[\s\u3000]*/u;
   const memoText = (value) =>
     String(value ?? '')
       .replace(/\r/g, '')
@@ -52,6 +53,16 @@
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   const isBlank = (value) => flatText(value).length === 0;
+
+  function extractTransferPatientMemo(patientMemo) {
+    const raw = memoText(patientMemo);
+    if (isBlank(raw)) return '';
+    if (!LEADING_EMOJI_RE.test(raw)) return raw;
+
+    const withoutEmoji = raw.replace(LEADING_EMOJI_RE, '');
+    const firstChunk = withoutEmoji.match(/^[^\s\u3000]+/u)?.[0] || '';
+    return memoText(firstChunk);
+  }
 
   function loadState() {
     try { return JSON.parse(localStorage.getItem(APP.key) || '{}'); } catch { return {}; }
@@ -225,12 +236,15 @@
       flatText(row.textContent).slice(0, 30);
     if (!patientNo || patientNo === '-') return null;
 
+    const patientMemoRaw = memoText(patientMemoTd.textContent);
+
     return {
       key: `${reservation}|${patientNo}|${patientName}`,
       reservation,
       patientNo,
       patientName,
-      patientMemo: memoText(patientMemoTd.textContent),
+      patientMemoRaw,
+      patientMemo: extractTransferPatientMemo(patientMemoRaw),
       receptionMemo: memoText(receptionMemoTd.textContent),
       patientMemoTd,
       receptionMemoTd,

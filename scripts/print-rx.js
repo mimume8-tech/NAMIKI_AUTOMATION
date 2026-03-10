@@ -844,31 +844,60 @@ async function printRxPagesOnly(context, pdfPage, pdfUrl) {
 
   const outputBytes = await outputDoc.save();
 
-  log("処方箋ページのみの PDF を新しいタブで開きます...");
-  const base64 = Buffer.from(outputBytes).toString("base64");
+  // 一時ファイルに保存して file:// で開く（data: URL では印刷が効かないため）
+  const os = require("os");
+  const tmpPath = path.join(os.tmpdir(), `print-rx-${Date.now()}.pdf`);
+  fs.writeFileSync(tmpPath, Buffer.from(outputBytes));
+  log(`処方箋PDF を一時ファイルに保存: ${tmpPath}`);
+
   const outputPage = await context.newPage();
-  await outputPage.goto(`data:application/pdf;base64,${base64}`, { waitUntil: "load" });
+  await outputPage.goto(`file:///${tmpPath.replace(/\\/g, "/")}`, { waitUntil: "load" });
   await sleep(PDF_READY_WAIT_MS);
 
   await triggerPrint(outputPage);
+
+  // 印刷後に一時ファイル削除
+  setTimeout(() => {
+    try { fs.unlinkSync(tmpPath); } catch {}
+  }, 30_000);
 }
 
 async function triggerPrint(page) {
   await page.bringToFront().catch(() => {});
-  await sleep(800);
+  await sleep(1500);
 
-  const isPdfViewer = await page
-    .evaluate(() => !!document.querySelector('link[href*="pdf_embedder.css"]'))
-    .catch(() => false);
-
-  if (isPdfViewer) {
-    await page.keyboard.press(process.platform === "darwin" ? "Meta+P" : "Control+P");
-    log("PDF ビューアに印刷ショートカットを送信しました。");
+  // 方法1: window.print()（--kiosk-printing でダイアログなし自動印刷）
+  try {
+    await page.evaluate(() => window.print());
+    log("window.print() を実行しました。");
+    await sleep(2000);
     return;
+  } catch (err) {
+    log(`window.print() 失敗: ${err.message}`);
   }
 
-  await page.evaluate(() => window.print());
-  log("印刷を開始しました。");
+  // 方法2: Ctrl+P ショートカット
+  try {
+    await page.keyboard.press("Control+P");
+    log("Ctrl+P を送信しました。");
+    await sleep(2000);
+    return;
+  } catch (err) {
+    log(`Ctrl+P 失敗: ${err.message}`);
+  }
+
+  // 方法3: CDP 経由で JavaScript 実行
+  try {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Runtime.evaluate", {
+      expression: "window.print()",
+      userGesture: true,
+    });
+    await cdp.detach().catch(() => {});
+    log("CDP 経由で印刷を実行しました。");
+  } catch (err) {
+    log(`全ての印刷方法が失敗: ${err.message}`);
+  }
 }
 
 function classifyPrescriptionPage(text) {
@@ -931,7 +960,7 @@ async function extractPageTexts(buffer) {
     return result.pages
       .slice()
       .sort((a, b) => a.num - b.num)
-      .map((page) => page.text || "");
+      .map((p) => p.text || "");
   } finally {
     await parser.destroy().catch(() => {});
   }
