@@ -132,11 +132,33 @@ async function waitForStable(page, ms = 1500) {
     console.log('╚══════════════════════════════════════════════╝');
     console.log('');
     console.log('受付一覧ページへの遷移を待機中...');
-    try {
-      await page.waitForURL(url => url.includes('/reception'), { timeout: 300000 });
+    // CDP接続時はwaitForURLがSPAナビゲーションを検出できないことがあるため
+    // ポーリングで確認する
+    const LOGIN_TIMEOUT = 300000; // 5分
+    const POLL_INTERVAL = 2000;
+    const startTime = Date.now();
+    let detected = false;
+    while (Date.now() - startTime < LOGIN_TIMEOUT) {
+      // ページのURLを直接確認（ブラウザ側のURLを取得）
+      try {
+        const currentUrl = page.url();
+        if (currentUrl.includes('/reception')) {
+          detected = true;
+          break;
+        }
+        // page.url()がキャッシュされている場合に備え、evaluateでも確認
+        const browserUrl = await page.evaluate(() => window.location.href);
+        if (browserUrl.includes('/reception')) {
+          detected = true;
+          break;
+        }
+      } catch {}
+      await new Promise(r => setTimeout(r, POLL_INTERVAL));
+    }
+    if (detected) {
       console.log('受付ページを検出しました！');
       await waitForStable(page, 1500);
-    } catch {
+    } else {
       console.error('タイムアウト（5分経過）。');
       try { await browser.close(); } catch {}
       process.exit(1);
