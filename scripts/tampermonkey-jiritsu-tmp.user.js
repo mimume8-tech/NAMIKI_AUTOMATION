@@ -307,9 +307,57 @@
   }
 
   /**
-   * 確実に input に値をセットする（2段階）
+   * React fiber の onChange を直接呼び出す（React 17+ 対応の最終手段）
+   * React の内部構造に直接アクセスして onChange ハンドラを実行する
+   */
+  function setReactFiberValue(el, value) {
+    if (!el) return false;
+    // React fiber key を探す
+    const fiberKey = Object.keys(el).find(
+      (k) => k.startsWith("__reactFiber$") || k.startsWith("__reactInternalInstance$")
+    );
+    if (!fiberKey) {
+      debug("React fiber が見つかりません");
+      return false;
+    }
+
+    const fiber = el[fiberKey];
+    // fiber ツリーを上方に辿って onChange を持つコンポーネントを探す
+    let current = fiber;
+    for (let i = 0; i < 20 && current; i++) {
+      const props = current.memoizedProps || current.pendingProps;
+      if (props && typeof props.onChange === "function") {
+        // nativeInputValueSetter で値を物理的にセット
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        if (setter) setter.call(el, value);
+        else el.value = value;
+
+        // React の onChange を直接呼び出す
+        const syntheticEvent = {
+          target: el,
+          currentTarget: el,
+          type: "change",
+          preventDefault() {},
+          stopPropagation() {},
+          persist() {},
+          nativeEvent: new Event("change", { bubbles: true }),
+        };
+        props.onChange(syntheticEvent);
+        debug(`setReactFiberValue: onChange 直接呼び出し成功 → "${el.value}"`);
+        return true;
+      }
+      current = current.return;
+    }
+
+    debug("React fiber: onChange ハンドラが見つかりません");
+    return false;
+  }
+
+  /**
+   * 確実に input に値をセットする（3段階）
    * 1. execCommand("insertText") — ブラウザのキーボード入力と同等
    * 2. nativeInputValueSetter + _valueTracker — 従来の React ハック
+   * 3. React fiber の onChange 直接呼び出し — 最終手段
    */
   async function setInputValueRobust(el, value, label = "") {
     if (!el) return false;
@@ -333,7 +381,27 @@
       return true;
     }
 
-    warn(`  ${label}: 入力失敗。value="${el.value}", 期待="${value}"`);
+    // 段階3: React fiber の onChange 直接呼び出し
+    debug(`  ${label}: setNativeValue 失敗("${el.value}") → React fiber へ`);
+    el.focus();
+    await sleep(50);
+    const fiberOk = setReactFiberValue(el, value);
+    await sleep(200);
+    if (el.value === value) {
+      log(`  ${label}: React fiber 成功 → "${el.value}"`);
+      return true;
+    }
+    // fiber で onChange が呼ばれても value が反映されない場合がある（非同期レンダリング）
+    // → 少し待って再確認
+    if (fiberOk) {
+      await sleep(500);
+      if (el.value === value) {
+        log(`  ${label}: React fiber 成功（遅延反映） → "${el.value}"`);
+        return true;
+      }
+    }
+
+    warn(`  ${label}: 全3段階で入力失敗。value="${el.value}", 期待="${value}"`);
     return false;
   }
 
@@ -1364,18 +1432,42 @@
   // ══════════════════════════════════════════════════════════════
   const BTN_ID = "jiritsu-tmp-btn";
 
+  /**
+   * 公費セクションヘッダー（「公費 ☑現在有効 ＋」の行）を特定する
+   * 「有効な公費が…」等の別テキストにマッチしないよう、
+   * 「現在有効」が近傍にある「公費」要素だけを返す
+   */
+  function findKouhiSectionHeader() {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const txt = walker.currentNode.textContent.trim();
+      if (!txt.includes("公費")) continue;
+      // 「有効な公費が登録されていません」等の長文はスキップ
+      if (txt.length > 10) continue;
+      const el = walker.currentNode.parentElement;
+      if (!el) continue;
+      // モーダル内はスキップ
+      if (el.closest('[class*="modal"], [class*="Modal"], [role="dialog"], [class*="overlay"], [class*="Overlay"]')) continue;
+      // 親を3段階上がって「現在有効」があるか確認
+      let p = el;
+      for (let i = 0; i < 4; i++) {
+        if (!p) break;
+        if (p.textContent.includes("現在有効")) {
+          debug("findKouhiSectionHeader: 発見", el.textContent.substring(0, 30));
+          return el;
+        }
+        p = p.parentElement;
+      }
+    }
+    return null;
+  }
+
   function ensureButton() {
     if (document.getElementById(BTN_ID)) return;
     if (!isOnTargetPage()) return;
 
-    const kouhiEl = findTextElement("公費");
+    const kouhiEl = findKouhiSectionHeader();
     if (!kouhiEl) return;
-
-    // モーダル内の「公費追加」タイトルにマッチした場合は無視する
-    if (kouhiEl.closest('[class*="modal"], [class*="Modal"], [role="dialog"], [class*="overlay"], [class*="Overlay"]')) {
-      debug("ensureButton: モーダル内の「公費」にマッチ → スキップ");
-      return;
-    }
 
     const btn = document.createElement("button");
     btn.id = BTN_ID;
