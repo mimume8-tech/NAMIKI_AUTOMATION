@@ -392,7 +392,7 @@ async function isAccountingModalOpen(page) {
 
 async function ensurePrintModePanel(page) {
   await page.evaluate(
-    ({ panelId, styleId, storageKey, defaultMode, positionKey }) => {
+    ({ panelId, styleId, storageKey, defaultMode, positionKey, yenSvgPathPrefix }) => {
       if (!document.body) {
         return;
       }
@@ -527,14 +527,29 @@ async function ensurePrintModePanel(page) {
           <div class="print-rx-footer">
             <button type="button" data-role="reset-pos">位置を戻す</button>
           </div>
-          <div class="print-rx-note">次に開く会計PDFへ適用します。</div>
+          <div class="print-rx-note">ボタンを押すと会計→印刷まで自動実行します。</div>
         `;
+
+        const findYenButton = () => {
+          for (const btn of document.querySelectorAll('button[data-variant="primary"][data-size="xl"]')) {
+            const pathEl = btn.querySelector("svg path");
+            if (pathEl && (pathEl.getAttribute("d") || "").startsWith(yenSvgPathPrefix)) {
+              return btn;
+            }
+          }
+          return null;
+        };
 
         panel.addEventListener("click", (event) => {
           const button = event.target.closest("button[data-mode]");
           if (button) {
             writeMode(button.dataset.mode);
             updatePanel(panel);
+            // ￥ボタンを自動クリック → モーダルが開く → 常駐スクリプトが自動処理
+            const yenBtn = findYenButton();
+            if (yenBtn) {
+              yenBtn.click();
+            }
             return;
           }
 
@@ -620,6 +635,7 @@ async function ensurePrintModePanel(page) {
       storageKey: PRINT_MODE_STORAGE_KEY,
       defaultMode: DEFAULT_PRINT_MODE,
       positionKey: PRINT_PANEL_POSITION_KEY,
+      yenSvgPathPrefix: "M4.65 4h4.905l2.46",
     }
   );
 }
@@ -646,6 +662,7 @@ async function processModal(context, kartePage) {
 
   log("チェックボックスを設定中...");
   await checkPrintOptions(kartePage);
+  await sleep(500); // React state反映待ち
 
   log("保存ボタンをクリック...");
   const [pdfPage] = await Promise.all([
@@ -665,7 +682,7 @@ async function processModal(context, kartePage) {
     return;
   }
 
-  await printRxPagesOnly(context, pdfPage, pdfUrl);
+  await printRxPagesOnly(context, kartePage, pdfPage, pdfUrl);
 }
 
 // ── 支払い方法の自動判定 ─────────────────────────
@@ -759,28 +776,25 @@ async function checkPrintOptions(page) {
 // ── 保存ボタン ──────────────────────────────────
 
 async function clickSaveButton(page) {
-  const candidates = [
-    page.locator('div[role="dialog"] button').filter({ hasText: /^保存$/ }),
-    page.locator('div[role="dialog"] button').filter({ hasText: /保存/ }),
-    page.locator("button").filter({ hasText: /^保存$/ }),
-    page.locator("button").filter({ hasText: /会計/ }).filter({ hasText: /保存/ }),
-  ];
-
-  for (const candidate of candidates) {
-    const count = await candidate.count().catch(() => 0);
-    for (let i = 0; i < count; i++) {
-      const button = candidate.nth(i);
-      const visible = await button.isVisible().catch(() => false);
-      if (!visible) {
-        continue;
-      }
-
-      await button.click({ timeout: 5_000 });
-      return;
+  // dk-accounts-modal 内の submit ボタン or テキスト「保存」のボタンをクリック
+  const clicked = await page.evaluate(() => {
+    // 優先: submit ボタン
+    const submit = document.querySelector('button[type="submit"]');
+    if (submit && submit.offsetParent !== null) {
+      submit.click();
+      return "submit";
     }
-  }
-
-  throw new Error("保存ボタンが見つかりません");
+    // フォールバック: テキストが「保存」のボタン
+    for (const btn of document.querySelectorAll("button")) {
+      if (btn.textContent.trim() === "保存" && btn.offsetParent !== null) {
+        btn.click();
+        return "text";
+      }
+    }
+    return null;
+  });
+  if (!clicked) throw new Error("保存ボタンが見つかりません");
+  log(`  保存ボタンクリック (${clicked})`);
 }
 
 // ── 印刷処理 ────────────────────────────────────
@@ -790,9 +804,9 @@ async function printAllPages(pdfPage) {
   await triggerPrint(pdfPage);
 }
 
-async function printRxPagesOnly(context, pdfPage, pdfUrl) {
+async function printRxPagesOnly(context, kartePage, pdfPage, pdfUrl) {
   log("PDF をダウンロード・解析中...");
-  const pdfBuffer = await downloadPdf(pdfPage, pdfUrl);
+  const pdfBuffer = await downloadPdf(kartePage, pdfUrl);
   const pageTexts = await extractPageTexts(pdfBuffer);
   log(`全 ${pageTexts.length} ページ`);
 
@@ -945,11 +959,20 @@ function classifyPrescriptionPage(text) {
 // ── ヘルパー ─────────────────────────────────────
 
 async function downloadPdf(page, url) {
-  const response = await page.context().request.get(url);
-  if (!response.ok()) {
-    throw new Error(`PDF ダウンロード失敗: ${response.status()}`);
-  }
-  return Buffer.from(await response.body());
+  // カルテページ上で fetch（Cookieが自動的に付く）
+  const base64 = await page.evaluate(async (pdfUrl) => {
+    const resp = await fetch(pdfUrl, { credentials: "include" });
+    if (!resp.ok) throw new Error("fetch failed: " + resp.status);
+    const buf = await resp.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }, url);
+  log("PDF ダウンロード成功");
+  return Buffer.from(base64, "base64");
 }
 
 async function extractPageTexts(buffer) {
