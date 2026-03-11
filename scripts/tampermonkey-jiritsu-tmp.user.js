@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      2.1.0
+// @version      2.2.0
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -36,7 +36,7 @@
     plusSvgPath: 'path[d="M13 11h9v2h-9v9h-2v-9H2v-2h9V2h2z"]',
 
     // 公費追加モーダル内のフォーム要素（ラベル探索をメインにするが一応セレクタも）
-    futanshaInput: 'input[name*="futansha"], input[name*="burden"]',
+    futanshaInput: 'input[name="publicExpenseNumber"]',
     kouhiTypeSelect: 'select[name*="kouhi"], select[name*="publicType"], select[name*="type"]',
     jukyushaInput: 'input[name*="jukyusha"], input[name*="recipient"]',
 
@@ -1313,70 +1313,41 @@
   }
 
   // ══════════════════════════════════════════════════════════════
-  // ボタン挿入
+  // ボタン挿入（公費セクション横のインラインボタンのみ）
   // ══════════════════════════════════════════════════════════════
   const BTN_ID = "jiritsu-tmp-btn";
-  const INLINE_BTN_ID = "jiritsu-tmp-btn-inline";
 
   function ensureButton() {
     if (document.getElementById(BTN_ID)) return;
     if (!isOnTargetPage()) return;
 
-    // ── 右下固定ボタン ──
+    const kouhiEl = findTextElement("公費");
+    if (!kouhiEl) return;
+
     const btn = document.createElement("button");
     btn.id = BTN_ID;
     btn.textContent = "自立仮番";
     Object.assign(btn.style, {
-      position: "fixed", bottom: "20px", right: "20px", zIndex: "999998",
-      padding: "12px 24px", fontSize: "16px", fontWeight: "bold",
-      color: "#fff", background: "linear-gradient(135deg, #1976D2, #1565C0)",
-      border: "none", borderRadius: "12px", cursor: "pointer",
-      boxShadow: "0 4px 16px rgba(25,118,210,0.4)",
-      transition: "all 0.2s", userSelect: "none",
+      marginLeft: "8px", padding: "2px 10px", fontSize: "12px",
+      fontWeight: "bold", color: "#fff", background: "#1976D2",
+      border: "none", borderRadius: "6px", cursor: "pointer",
+      verticalAlign: "middle",
     });
-    btn.onmouseenter = () => { btn.style.transform = "scale(1.05)"; };
-    btn.onmouseleave = () => { btn.style.transform = "scale(1)"; };
     btn.onclick = () => {
       if (btn.disabled) return;
       setButtonBusy(true);
       main().finally(() => setButtonBusy(false));
     };
-    document.body.appendChild(btn);
-
-    // ── 公費セクション横のインラインボタン ──
-    try {
-      const kouhiEl = findTextElement("公費");
-      if (kouhiEl && !document.getElementById(INLINE_BTN_ID)) {
-        const ib = document.createElement("button");
-        ib.id = INLINE_BTN_ID;
-        ib.textContent = "自立仮番";
-        Object.assign(ib.style, {
-          marginLeft: "8px", padding: "2px 10px", fontSize: "12px",
-          fontWeight: "bold", color: "#fff", background: "#1976D2",
-          border: "none", borderRadius: "6px", cursor: "pointer",
-          verticalAlign: "middle",
-        });
-        ib.onclick = () => {
-          if (ib.disabled) return;
-          setButtonBusy(true);
-          main().finally(() => setButtonBusy(false));
-        };
-        kouhiEl.parentElement?.appendChild(ib);
-      }
-    } catch (e) { /* インラインは任意 */ }
-
-    log("「自立仮番」ボタンを追加");
+    kouhiEl.parentElement?.appendChild(btn);
+    log("「自立仮番」ボタンを追加（公費セクション横）");
   }
 
   function setButtonBusy(busy) {
     const btn = document.getElementById(BTN_ID);
-    const ib = document.getElementById(INLINE_BTN_ID);
-    [btn, ib].forEach((b) => {
-      if (!b) return;
-      b.disabled = busy;
-      b.textContent = busy ? "処理中..." : "自立仮番";
-      b.style.opacity = busy ? "0.6" : "1";
-    });
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.textContent = busy ? "処理中..." : "自立仮番";
+    btn.style.opacity = busy ? "0.6" : "1";
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -1394,7 +1365,7 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v2.1.0 初期化");
+    log("v2.2.0 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
     setTimeout(() => { ensureButton(); startObserver(); }, 2000);
   }
