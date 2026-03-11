@@ -1235,32 +1235,104 @@
   async function openChartUpdateModal() {
     log("STEP: カルテ更新モーダルを開く（Phase 2）");
 
-    // 21000000 を含む公費行の鉛筆マークを探す
-    const kouhiEl = findTextElement("公費");
-    if (!kouhiEl) throw new Error("公費セクションが見つかりません");
-
-    let section = kouhiEl;
-    for (let i = 0; i < 6; i++) {
-      section = section.parentElement;
-      if (!section) break;
-      const rows = section.querySelectorAll("tr, [class*='row']");
-      for (const row of rows) {
-        if (!row.textContent.includes(TEMP_FUTANSHA) && !row.textContent.includes("精神通院")) continue;
-        // 鉛筆マーク: SVGを持つボタン or edit系クラス
-        const btns = row.querySelectorAll("button, a, [role='button']");
+    // === 方法1: 公費行の鉛筆マーク（✏️）アイコンをクリック ===
+    // 21000000 テキストを含む要素を探し、その近くの鉛筆ボタンを押す
+    const futanshaEl = findTextElement(TEMP_FUTANSHA);
+    if (futanshaEl) {
+      // 鉛筆ボタンは同じ行の右端にある
+      let container = futanshaEl;
+      for (let i = 0; i < 5; i++) {
+        container = container.parentElement;
+        if (!container) break;
+        // SVG を含むボタン（鉛筆アイコン）を探す
+        const btns = container.querySelectorAll("button, a, [role='button']");
         for (const btn of btns) {
-          if (btn.querySelector("svg") || btn.classList.toString().match(/edit|pencil/i)) {
-            safeClick(btn);
-            log("鉛筆マークをクリック");
-            const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 8000);
+          if (!btn.querySelector("svg")) continue;
+          // 更新（🔄）と鉛筆（✏️）の区別: 鉛筆はpath内容で判定
+          // どちらか不明でもクリックしてカルテ更新が開けばOK
+          const svgPaths = btn.querySelectorAll("path");
+          for (const p of svgPaths) {
+            const d = p.getAttribute("d") || "";
+            // 鉛筆アイコンは一般的に M3... や M14... 等のedit系パス
+            // 更新アイコン（🔄）はM17.65... や circular パス
+            // 安全策: 両方試して、カルテ更新モーダルが開くものを採用
+            if (d.length > 10) {
+              debug(`鉛筆候補: d="${d.substring(0, 30)}..."`);
+            }
+          }
+        }
+        // SVG含むボタンが複数ある場合、最後のもの（右端＝鉛筆）を選ぶ
+        const svgBtns = Array.from(btns).filter(
+          (b) => b.querySelector("svg") && b.offsetParent !== null
+        );
+        if (svgBtns.length >= 2) {
+          // 右端のボタン（鉛筆マーク）を選択
+          const pencilBtn = svgBtns[svgBtns.length - 1];
+          safeClick(pencilBtn);
+          log("公費行の鉛筆マークをクリック（最右端SVGボタン）");
+          try {
+            const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 5000);
             log("カルテ更新モーダルが開きました");
             await sleep(500);
             return modal;
+          } catch (e) {
+            debug("最右端ボタンではカルテ更新が開かなかった → 他の方法を試行");
           }
+        } else if (svgBtns.length === 1) {
+          safeClick(svgBtns[0]);
+          log("公費行のSVGボタンをクリック");
+          try {
+            const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 5000);
+            log("カルテ更新モーダルが開きました");
+            await sleep(500);
+            return modal;
+          } catch (e) {
+            debug("SVGボタンではカルテ更新が開かなかった → 他の方法を試行");
+          }
+        }
+        if (svgBtns.length > 0) break; // ボタンは見つけたが失敗した場合も次へ
+      }
+    }
+
+    // === 方法2: 画面上部の「編集」ボタン/タブ ===
+    log("方法2: 画面上部の「編集」ボタンを探索");
+    const editBtn = findButtonByText("編集");
+    if (editBtn && editBtn.offsetParent !== null) {
+      safeClick(editBtn);
+      log("「編集」ボタンをクリック");
+      try {
+        const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 5000);
+        log("カルテ更新モーダルが開きました");
+        await sleep(500);
+        return modal;
+      } catch (e) {
+        debug("「編集」ボタンではカルテ更新が開かなかった");
+      }
+    }
+
+    // === 方法3: 全SVGボタンから鉛筆アイコンを総探索 ===
+    log("方法3: 全ページから鉛筆アイコンを総探索");
+    const allSvgBtns = document.querySelectorAll("button svg, [role='button'] svg");
+    for (const svg of allSvgBtns) {
+      const btn = svg.closest("button") || svg.closest("[role='button']");
+      if (!btn || btn.offsetParent === null) continue;
+      // 公費セクション（21000000の近く）のボタンだけ対象
+      const parent = btn.parentElement?.parentElement?.parentElement;
+      if (parent && parent.textContent.includes(TEMP_FUTANSHA)) {
+        safeClick(btn);
+        log("公費セクション内のSVGボタンをクリック");
+        try {
+          const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 5000);
+          log("カルテ更新モーダルが開きました");
+          await sleep(500);
+          return modal;
+        } catch (e) {
+          debug("このボタンではカルテ更新が開かなかった → 次へ");
         }
       }
     }
-    throw new Error("鉛筆マーク（編集ボタン）が見つかりません");
+
+    throw new Error("カルテ更新モーダルの開き方が見つかりません");
   }
 
   async function selectJiritsuToPublic1() {
@@ -1268,46 +1340,90 @@
     const modal = findModalByTitle("カルテ更新");
     if (!modal) throw new Error("カルテ更新モーダルが見つかりません");
 
-    // 公費セクション内の select を探す
     const selects = modal.querySelectorAll("select");
     debug(`カルテ更新モーダル内の select: ${selects.length} 個`);
+    if (DEBUG) {
+      Array.from(selects).forEach((sel, i) => {
+        const txt = sel.options[sel.selectedIndex]?.textContent?.substring(0, 60) || "";
+        debug(`  select[${i}]: selected="${txt}", options=${sel.options.length}`);
+      });
+    }
 
-    // 公費1 = ラベル "1" の行の select
+    // 公費1の select を見つけて 21000000 のオプションを選択する
+    // 画面構造: ラベル "1" → select（公費1）、ラベル "2" → select（公費2）、...
     let kouhi1 = null;
+
     for (const sel of selects) {
+      // この select に 21000000/精神通院 を含む option があるか
+      let targetOpt = null;
       for (const opt of sel.options) {
         if (opt.textContent.includes(TEMP_FUTANSHA) || opt.textContent.includes("精神通院")) {
-          // この select の行ラベルが "1" か確認
-          const row = sel.closest("tr, [class*='row']");
-          const label = row?.querySelector("td, th, label, span");
-          if (label && (label.textContent.trim() === "1" || label.textContent.includes("公費"))) {
-            kouhi1 = sel;
-            setSelectValue(sel, opt.value);
-            log(`公費1 → "${opt.textContent.trim()}" を選択`);
-            break;
-          }
+          targetOpt = opt;
+          break;
         }
       }
-      if (kouhi1) break;
+      if (!targetOpt) continue;
+
+      // このselectが公費1行にあるか確認
+      // 方法A: 近傍に "1" テキストがある
+      const parent = sel.parentElement;
+      const grandParent = parent?.parentElement;
+      const nearText = (parent?.textContent || "") + (grandParent?.textContent || "");
+
+      // 行内の先頭テキスト要素を確認
+      const siblings = grandParent?.children || parent?.children || [];
+      let isRow1 = false;
+      for (const sib of siblings) {
+        const t = sib.textContent.trim();
+        if (t === "1") { isRow1 = true; break; }
+      }
+
+      // 方法B: selectの直前にある要素のテキストが "1"
+      const prevSib = sel.previousElementSibling || parent?.previousElementSibling;
+      if (prevSib && prevSib.textContent.trim() === "1") isRow1 = true;
+
+      // 方法C: ラベル "1" が近傍にある（findByLabel的な探索）
+      if (!isRow1) {
+        const row = sel.closest("tr, [class*='row'], [class*='Row']");
+        if (row) {
+          const firstCell = row.querySelector("td, th, span, div");
+          if (firstCell && firstCell.textContent.trim() === "1") isRow1 = true;
+        }
+      }
+
+      if (isRow1 || !kouhi1) {
+        // 既に選択されているか確認
+        if (sel.value === targetOpt.value) {
+          log(`公費1: 既に "${targetOpt.textContent.trim().substring(0, 50)}" が選択済み ✓`);
+          kouhi1 = sel;
+          break;
+        }
+        // 選択する
+        setSelectValue(sel, targetOpt.value);
+        log(`公費1 → "${targetOpt.textContent.trim().substring(0, 50)}" を選択`);
+        kouhi1 = sel;
+        if (isRow1) break; // 確実に row1 なら終了
+      }
     }
 
     if (!kouhi1) {
-      // フォールバック: 3番目の select を公費1と仮定
-      if (selects.length >= 3) {
-        const sel = selects[2];
+      // フォールバック: 全 select を順番に試す
+      for (const sel of selects) {
         for (const opt of sel.options) {
           if (opt.textContent.includes(TEMP_FUTANSHA) || opt.textContent.includes("精神通院")) {
             setSelectValue(sel, opt.value);
-            log(`公費1(fallback[2]) → "${opt.textContent.trim()}" を選択`);
+            log(`公費1(fallback) → "${opt.textContent.trim().substring(0, 50)}" を選択`);
             kouhi1 = sel;
             break;
           }
         }
+        if (kouhi1) break;
       }
     }
 
     if (!kouhi1) {
       warn("公費1の設定に失敗。手動で設定してください。");
+      showToast("公費1を手動で選択してください", "warn");
     }
     await sleep(300);
   }
@@ -1320,15 +1436,30 @@
     if (!modal) return;
 
     const selects = modal.querySelectorAll("select");
-    // 公費2 = 4番目の select と仮定
-    if (selects.length >= 4) {
-      const sel = selects[3];
+
+    // 公費2 の select を探す（ラベル "2" の行）
+    for (const sel of selects) {
+      // 生活保護の option があるか
+      let targetOpt = null;
       for (const opt of sel.options) {
         if (/\b12\d{6}\b/.test(opt.textContent) || opt.textContent.includes("生活保護")) {
-          setSelectValue(sel, opt.value);
-          log(`公費2 → "${opt.textContent.trim()}" を選択`);
-          return;
+          targetOpt = opt;
+          break;
         }
+      }
+      if (!targetOpt) continue;
+
+      // "2" ラベルの行か確認
+      const row = sel.closest("tr, [class*='row'], [class*='Row']");
+      const firstCell = row?.querySelector("td, th, span, div");
+      const prevSib = sel.previousElementSibling || sel.parentElement?.previousElementSibling;
+      if (
+        (firstCell && firstCell.textContent.trim() === "2") ||
+        (prevSib && prevSib.textContent.trim() === "2")
+      ) {
+        setSelectValue(sel, targetOpt.value);
+        log(`公費2 → "${targetOpt.textContent.trim().substring(0, 50)}" を選択`);
+        return;
       }
     }
     warn("公費2の設定に失敗。手動で設定してください。");
@@ -1342,11 +1473,22 @@
     if (!btn) throw new Error("「更新」ボタンが見つかりません");
     safeClick(btn);
     log("更新ボタンをクリック");
+
+    // 確認ダイアログがあれば処理
+    await sleep(800);
+    await handleCustomConfirmDialog();
+
     try {
       await waitForCondition(() => !findModalByTitle("カルテ更新"), 8000);
       log("カルテ更新完了 ✓");
     } catch (e) {
-      warn("カルテ更新モーダルが閉じません");
+      // もう一度確認ダイアログを処理
+      await handleCustomConfirmDialog();
+      await sleep(1000);
+      if (findModalByTitle("カルテ更新")) {
+        warn("カルテ更新モーダルが閉じません。手動で確認してください。");
+        showToast("カルテ更新を確認してください", "warn");
+      }
     }
   }
 
