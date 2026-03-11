@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      2.2.0
+// @version      3.0.0
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -265,27 +265,76 @@
   // React SPA 対応イベント発火
   // ══════════════════════════════════════════════════════════════
 
-  /** React controlled input に値をセット */
+  /**
+   * execCommand("insertText") で入力する（React 対応の最も確実な方法）
+   * ブラウザがキーボード入力と同じ InputEvent を発火するので React が受け入れる
+   */
+  function execInsertText(el, value) {
+    if (!el) return false;
+    el.focus();
+    // 全選択して既存値を置き換え
+    el.select?.();
+    if (!el.selectionStart && !el.selectionEnd) {
+      // select() が効かない場合は setSelectionRange で全選択
+      try { el.setSelectionRange(0, el.value.length); } catch (e) { /* ignore */ }
+    }
+    // insertText で入力（React が InputEvent を正しく拾う）
+    document.execCommand("insertText", false, value);
+    debug(`execInsertText("${value}") → result="${el.value}"`);
+    return el.value === value;
+  }
+
+  /**
+   * nativeInputValueSetter + _valueTracker リセット（React 用フォールバック）
+   */
   function setNativeValue(el, value) {
     if (!el) return false;
-    // React が使う内部プロパティを直接書き換える
     const proto = el instanceof HTMLSelectElement
       ? HTMLSelectElement.prototype
       : el instanceof HTMLTextAreaElement
         ? HTMLTextAreaElement.prototype
         : HTMLInputElement.prototype;
     const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
-    if (setter) {
-      setter.call(el, value);
-    } else {
-      el.value = value;
-    }
-    // React 16+ は SyntheticEvent を input で拾う
+    if (setter) setter.call(el, value);
+    else el.value = value;
+    // React の _valueTracker をリセット
+    const tracker = el._valueTracker;
+    if (tracker) tracker.setValue("");
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
-    el.dispatchEvent(new Event("blur", { bubbles: true }));
-    debug(`setNativeValue("${value}") →`, el.name || el.className?.substring?.(0, 40));
+    debug(`setNativeValue("${value}") → result="${el.value}"`);
     return true;
+  }
+
+  /**
+   * 確実に input に値をセットする（2段階）
+   * 1. execCommand("insertText") — ブラウザのキーボード入力と同等
+   * 2. nativeInputValueSetter + _valueTracker — 従来の React ハック
+   */
+  async function setInputValueRobust(el, value, label = "") {
+    if (!el) return false;
+
+    // 段階1: execCommand("insertText") — 最も確実
+    el.focus();
+    await sleep(50);
+    execInsertText(el, value);
+    await sleep(100);
+    if (el.value === value) {
+      log(`  ${label}: execInsertText 成功 → "${el.value}"`);
+      return true;
+    }
+
+    // 段階2: nativeInputValueSetter + _valueTracker
+    debug(`  ${label}: execInsertText 失敗("${el.value}") → setNativeValue へ`);
+    setNativeValue(el, value);
+    await sleep(100);
+    if (el.value === value) {
+      log(`  ${label}: setNativeValue 成功 → "${el.value}"`);
+      return true;
+    }
+
+    warn(`  ${label}: 入力失敗。value="${el.value}", 期待="${value}"`);
+    return false;
   }
 
   /** select を value で選択 */
@@ -714,15 +763,10 @@
   // 生活保護判定
   // ══════════════════════════════════════════════════════════════
   function detectLifeProtection() {
-    // 条件1: 医療保険情報が登録されていない
+    // 医療保険がない人は生活保護 → 負担なし
     const noIns = !!findTextElement("有効な保険が登録されていません");
-    // 条件2: 既存公費に12始まりの負担者番号がある
-    const has12 = !!document.body.textContent.match(
-      new RegExp(`(?:^|\\s)(${LIFE_PROTECTION_PREFIX}\\d{6})(?:\\s|$)`, "m")
-    );
-    const result = noIns && has12;
-    log(`生活保護判定: 保険なし=${noIns}, 12始まり公費=${has12} → ${result}`);
-    return result;
+    log(`生活保護判定: 保険なし=${noIns} → ${noIns}`);
+    return noIns;
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -846,13 +890,16 @@
     }
     if (!futanshaInput) throw new Error("負担者番号の入力欄が見つかりません");
 
-    // フォーカスしてから値を入力（React対応）
-    futanshaInput.focus();
-    await sleep(100);
-    setNativeValue(futanshaInput, TEMP_FUTANSHA);
+    // React 対応の確実な入力（execInsertText → setNativeValue の2段階）
+    const futanshaOk = await setInputValueRobust(futanshaInput, TEMP_FUTANSHA, "負担者番号");
     // blur で確定させる（公費の種類の自動選択トリガー）
     futanshaInput.dispatchEvent(new Event("blur", { bubbles: true }));
-    log(`  B: 負担者番号 = "${TEMP_FUTANSHA}" 入力完了`);
+    if (futanshaOk) {
+      log(`  B: 負担者番号 = "${TEMP_FUTANSHA}" 入力成功`);
+    } else {
+      warn(`  B: 負担者番号の自動入力に失敗。手動で "${TEMP_FUTANSHA}" を入力してください。`);
+      showToast(`負担者番号 ${TEMP_FUTANSHA} を手動入力してください`, "warn");
+    }
 
     // ────────────────────────────
     // C-D. 公費の種類の自動選択を待つ
@@ -1324,6 +1371,12 @@
     const kouhiEl = findTextElement("公費");
     if (!kouhiEl) return;
 
+    // モーダル内の「公費追加」タイトルにマッチした場合は無視する
+    if (kouhiEl.closest('[class*="modal"], [class*="Modal"], [role="dialog"], [class*="overlay"], [class*="Overlay"]')) {
+      debug("ensureButton: モーダル内の「公費」にマッチ → スキップ");
+      return;
+    }
+
     const btn = document.createElement("button");
     btn.id = BTN_ID;
     btn.textContent = "自立仮番";
@@ -1365,7 +1418,7 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v2.2.0 初期化");
+    log("v3.0.0 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
     setTimeout(() => { ensureButton(); startObserver(); }, 2000);
   }
