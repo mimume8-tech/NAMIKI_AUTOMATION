@@ -14,9 +14,13 @@
 const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright");
-const { PDFParse } = require("pdf-parse");
+const pdfParse = require("pdf-parse");
 const { PDFDocument } = require("pdf-lib");
 const { spawn } = require("child_process");
+
+// ── PC別設定ファイル読み込み ─────────────────────
+const PC_CONFIG_PATH = path.join(__dirname, "..", "config", "pc-config.json");
+const PC_CONFIG = JSON.parse(fs.readFileSync(PC_CONFIG_PATH, "utf8"));
 
 // ── 設定 ─────────────────────────────────────────
 const CDP_URL = "http://127.0.0.1:9222";
@@ -28,6 +32,8 @@ const DIGIKAR_USER_DATA = "C:\\Users\\ykimu\\AppData\\Local\\Google\\Chrome\\Dig
 const DIGIKAR_PROFILE_DIRECTORY = "Default";
 const DIGIKAR_URL = "https://digikar.jp/reception/";
 const PATIENT_NAME = "木村友哉";
+const LOGIN_ID = PC_CONFIG.digikar.loginId;
+const LOGIN_PASSWORDS = PC_CONFIG.digikar.passwords;
 const DEFAULT_PRINT_MODE = "rx_only";
 const POLL_INTERVAL_MS = 2_000;
 const CDP_RETRY_INTERVAL_MS = 10_000;
@@ -314,6 +320,166 @@ function writeJsonFile(filePath, value) {
 }
 
 // ══════════════════════════════════════════════════
+// 自動ログイン
+// ══════════════════════════════════════════════════
+
+let lastLoginAttempt = 0;
+const LOGIN_COOLDOWN_MS = 30_000; // 連続試行防止
+
+async function tryAutoLogin(page) {
+  // ログインページかどうか判定（URLまたはフォームの有無）
+  const loginState = await page.evaluate(() => {
+    const url = location.href;
+    // ログインページのURLパターン
+    if (url.includes("/login") || url.includes("/sign_in") || url.includes("/signin")) {
+      // ID入力欄を探す
+      const emailInput = document.querySelector(
+        'input[type="email"], input[type="text"][name*="mail"], input[type="text"][name*="login"], input[type="text"][name*="user"], input[type="text"][autocomplete="email"], input[type="text"][autocomplete="username"]'
+      );
+      const passInput = document.querySelector('input[type="password"]');
+
+      if (emailInput && passInput) return "both_visible";
+      if (emailInput && !passInput) return "email_only";
+      if (!emailInput && passInput) return "password_only";
+    }
+    return "not_login";
+  }).catch(() => "error");
+
+  if (loginState === "not_login" || loginState === "error") return false;
+
+  // クールダウン
+  if (Date.now() - lastLoginAttempt < LOGIN_COOLDOWN_MS) return false;
+  lastLoginAttempt = Date.now();
+
+  log(`ログインページを検知 (${loginState}) → 自動入力します...`);
+
+  if (loginState === "both_visible") {
+    // ID + パスワードが両方見える場合
+    await fillLoginForm(page, LOGIN_ID, LOGIN_PASSWORDS[0]);
+    return true;
+  }
+
+  if (loginState === "email_only") {
+    // メール入力 → 次へ → パスワード入力 の2段階
+    await page.evaluate((email) => {
+      const input = document.querySelector(
+        'input[type="email"], input[type="text"][name*="mail"], input[type="text"][name*="login"], input[type="text"][name*="user"], input[type="text"][autocomplete="email"], input[type="text"][autocomplete="username"]'
+      );
+      if (input) {
+        input.focus();
+        input.value = email;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }, LOGIN_ID);
+    await sleep(500);
+    // 次へ/ログインボタンを押す
+    await clickSubmitButton(page);
+    await sleep(2000);
+    // パスワード入力
+    await fillPassword(page, LOGIN_PASSWORDS[0]);
+    return true;
+  }
+
+  if (loginState === "password_only") {
+    await fillPassword(page, LOGIN_PASSWORDS[0]);
+    return true;
+  }
+
+  return false;
+}
+
+async function fillLoginForm(page, email, password) {
+  await page.evaluate(({ email, password }) => {
+    const emailInput = document.querySelector(
+      'input[type="email"], input[type="text"][name*="mail"], input[type="text"][name*="login"], input[type="text"][name*="user"], input[type="text"][autocomplete="email"], input[type="text"][autocomplete="username"]'
+    );
+    const passInput = document.querySelector('input[type="password"]');
+
+    if (emailInput) {
+      emailInput.focus();
+      emailInput.value = email;
+      emailInput.dispatchEvent(new Event("input", { bubbles: true }));
+      emailInput.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    if (passInput) {
+      passInput.focus();
+      passInput.value = password;
+      passInput.dispatchEvent(new Event("input", { bubbles: true }));
+      passInput.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }, { email, password });
+
+  await sleep(500);
+  await clickSubmitButton(page);
+  log("ログイン情報を入力して送信しました");
+
+  // ログイン成功を待つ（URLが変わるか確認）
+  await sleep(3000);
+  const success = await checkLoginSuccess(page);
+  if (!success) {
+    // パスワードが違った場合、2番目を試す
+    log("パスワード1 失敗 → パスワード2 を試します...");
+    await page.evaluate((password) => {
+      const passInput = document.querySelector('input[type="password"]');
+      if (passInput) {
+        passInput.focus();
+        passInput.value = password;
+        passInput.dispatchEvent(new Event("input", { bubbles: true }));
+        passInput.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }, LOGIN_PASSWORDS[1]);
+    await sleep(500);
+    await clickSubmitButton(page);
+    await sleep(3000);
+  }
+}
+
+async function fillPassword(page, password, isRetry = false) {
+  await page.evaluate((pw) => {
+    const passInput = document.querySelector('input[type="password"]');
+    if (passInput) {
+      passInput.focus();
+      passInput.value = pw;
+      passInput.dispatchEvent(new Event("input", { bubbles: true }));
+      passInput.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }, password);
+  await sleep(500);
+  await clickSubmitButton(page);
+  log("パスワードを入力して送信しました");
+
+  await sleep(3000);
+  const success = await checkLoginSuccess(page);
+  if (!success && !isRetry && LOGIN_PASSWORDS.length > 1) {
+    log("パスワード1 失敗 → パスワード2 を試します...");
+    await fillPassword(page, LOGIN_PASSWORDS[1], true);
+  }
+}
+
+async function clickSubmitButton(page) {
+  await page.evaluate(() => {
+    // submit ボタン
+    const submit = document.querySelector('button[type="submit"], input[type="submit"]');
+    if (submit && submit.offsetParent !== null) { submit.click(); return; }
+    // テキストでログイン系ボタンを探す
+    for (const btn of document.querySelectorAll("button")) {
+      const t = btn.textContent.trim();
+      if ((t.includes("ログイン") || t.includes("サインイン") || t === "次へ" || t === "Next") && btn.offsetParent !== null) {
+        btn.click();
+        return;
+      }
+    }
+  });
+}
+
+async function checkLoginSuccess(page) {
+  const url = page.url();
+  // ログインページから離れたら成功
+  return !url.includes("/login") && !url.includes("/sign_in") && !url.includes("/signin");
+}
+
+// ══════════════════════════════════════════════════
 // モーダル監視ループ
 // ══════════════════════════════════════════════════
 
@@ -323,9 +489,21 @@ async function watchLoop(browser) {
     throw new Error("コンテキストなし");
   }
 
-  log("会計モーダルを監視中... (画面右上の印刷モードを選んでください)");
+  log(`${PC_CONFIG.pcName} - 会計モーダルを監視中...`);
 
   while (true) {
+    const pages = context.pages();
+    const digikarPage = pages.find((p) => p.url().includes("digikar.jp"));
+
+    // ログインページなら自動ログイン
+    if (digikarPage) {
+      const loggedIn = await tryAutoLogin(digikarPage);
+      if (loggedIn) {
+        await sleep(5000);
+        continue;
+      }
+    }
+
     const kartePage = await getDigikarPage(context);
 
     if (!kartePage) {
@@ -976,17 +1154,21 @@ async function downloadPdf(page, url) {
 }
 
 async function extractPageTexts(buffer) {
-  const parser = new PDFParse({ data: buffer });
+  const pageTexts = [];
+  let currentPage = 0;
 
-  try {
-    const result = await parser.getText();
-    return result.pages
-      .slice()
-      .sort((a, b) => a.num - b.num)
-      .map((p) => p.text || "");
-  } finally {
-    await parser.destroy().catch(() => {});
-  }
+  await pdfParse(buffer, {
+    pagerender: function (pageData) {
+      return pageData.getTextContent().then((textContent) => {
+        const text = textContent.items.map((item) => item.str).join(" ");
+        pageTexts[currentPage] = text;
+        currentPage++;
+        return text;
+      });
+    },
+  });
+
+  return pageTexts;
 }
 
 // ── 起動 ─────────────────────────────────────────

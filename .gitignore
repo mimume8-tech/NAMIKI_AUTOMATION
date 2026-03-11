@@ -4,6 +4,7 @@ Thumbs.db
 .env
 .env.*
 scripts/adhd_distribution_auto.config.json
+config/pc-config.json
 node_modules/
 .vscode/
 
