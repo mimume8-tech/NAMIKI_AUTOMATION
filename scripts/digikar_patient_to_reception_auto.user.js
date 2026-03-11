@@ -57,11 +57,22 @@
   function extractTransferPatientMemo(patientMemo) {
     const raw = memoText(patientMemo);
     if (isBlank(raw)) return '';
-    if (!LEADING_EMOJI_RE.test(raw)) return raw;
 
-    const withoutEmoji = raw.replace(LEADING_EMOJI_RE, '');
-    const firstChunk = withoutEmoji.match(/^[^\s\u3000]+/u)?.[0] || '';
-    return memoText(firstChunk);
+    const lines = raw.split('\n');
+    const extracted = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!LEADING_EMOJI_RE.test(trimmed)) continue;
+      const emojiMatch = trimmed.match(LEADING_EMOJI_RE);
+      const emoji = emojiMatch[0].replace(/[\s\u3000]+$/u, '');
+      const afterEmoji = trimmed.replace(LEADING_EMOJI_RE, '');
+      const firstChunk = afterEmoji.match(/^[^\s\u3000]+/u)?.[0] || '';
+      if (emoji || firstChunk) {
+        extracted.push(firstChunk ? `${emoji}${firstChunk}` : emoji);
+      }
+    }
+
+    return extracted.join('\n');
   }
 
   function loadState() {
