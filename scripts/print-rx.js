@@ -209,6 +209,7 @@ function startChromeProcess() {
       "--new-window",
       "--kiosk-printing",
       "--show-bookmark-bar",
+      '--auto-select-certificate-for-urls={"pattern":"*://digikar.jp"}',
       `--user-data-dir=${DIGIKAR_USER_DATA}`,
       `--profile-directory=${DIGIKAR_PROFILE_DIRECTORY}`,
       DIGIKAR_URL,
