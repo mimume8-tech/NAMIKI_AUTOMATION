@@ -252,18 +252,49 @@ async function waitForStable(page, ms = 1500) {
 
       const result = await processOneKarte(page, fullUrl);
 
-      processed.add(href);
-      saveProcessed(processed);
-
       if (result === 'skipped') {
+        processed.add(href);
+        saveProcessed(processed);
         skippedCount++;
-      } else {
+      } else if (result === 'saved') {
+        processed.add(href);
+        saveProcessed(processed);
         savedCount++;
+      } else {
+        // result === 'failed'
+        console.error(`  ✗ 下書き保存に失敗 → processed に追加しません`);
+        errors.push({ patient: label, error: '複写または保存に失敗' });
+        errorCount++;
       }
     } catch (err) {
       console.error(`  ⚠ エラー: ${err.message}`);
       errors.push({ patient: label, error: err.message });
       errorCount++;
+      // processed に追加しない → 次回再試行される
+
+      // ページが閉じられた場合、再接続を試みる
+      if (err.message.includes('closed') || err.message.includes('Target page')) {
+        console.log('  → ページ再取得を試みます...');
+        try {
+          const pages = context.pages();
+          const digikarPage = pages.find(p => p.url().includes('digikar.jp'));
+          if (digikarPage) {
+            page = digikarPage;
+            console.log('  → 既存のデジカルページに再接続');
+          } else if (pages.length > 0) {
+            page = pages.find(p => !p.url().startsWith('chrome://')) || pages[0];
+            await page.goto('https://digikar.jp/reception/', { timeout: 30000, waitUntil: 'domcontentloaded' });
+            await waitForStable(page, 2000);
+            console.log('  → 受付ページに再ナビゲート');
+          } else {
+            console.error('  ✗ 利用可能なページがありません。終了します。');
+            break;
+          }
+        } catch (reconnErr) {
+          console.error(`  ✗ 再接続失敗: ${reconnErr.message}。終了します。`);
+          break;
+        }
+      }
     }
   }
 
@@ -299,14 +330,14 @@ async function processOneKarte(page, fullUrl) {
   }
 
   // ===== 右パネルが空 → 複写を試みる =====
-  await doCopyButtons(page);
+  let copyResult = await doCopyButtonsWithVerify(page);
 
   // 複写後に内容が入ったかチェック
   const stillEmpty = await checkEditingAreaEmpty(page);
 
-  if (stillEmpty) {
+  if (stillEmpty || !copyResult.shuso || !copyResult.shochi) {
     // 空の下書きが邪魔している → ×で削除して再試行
-    console.log('  ⚠ 複写後も空 → 空の下書きを削除して再試行');
+    console.log('  ⚠ 複写後も不完全 → 空の下書きを削除して再試行');
 
     // カルテタブの×を押して閉じる
     try {
@@ -328,34 +359,117 @@ async function processOneKarte(page, fullUrl) {
       document.querySelectorAll('[class*="modal-flag"]').forEach(el => el.remove());
     });
 
-    // 再度複写
-    await doCopyButtons(page);
+    // 再度複写（2回目）
+    copyResult = await doCopyButtonsWithVerify(page);
+
+    // 2回目も失敗なら諦める
+    if (!copyResult.shuso || !copyResult.shochi) {
+      const failed = [];
+      if (!copyResult.shuso) failed.push('主訴・所見');
+      if (!copyResult.shochi) failed.push('処置・行為');
+      console.error(`  ✗ 再試行後も複写失敗: ${failed.join(', ')}`);
+      return 'failed';
+    }
+  }
+
+  // ===== 複写成功を最終確認 =====
+  const finalEmpty = await checkEditingAreaEmpty(page);
+  if (finalEmpty) {
+    console.error('  ✗ 複写ボタンは押せたが右パネルに内容が反映されていない');
+    return 'failed';
   }
 
   // ===== ￥ボタン（下書き保存） =====
   try {
     await clickYenButton(page);
-    console.log('  ✓ ￥ 下書き保存');
-  } catch (e) { console.warn(`  ⚠ ￥ボタン: ${e.message}`); }
-  await page.waitForTimeout(800);
+  } catch (e) {
+    console.error(`  ✗ ￥ボタン失敗: ${e.message}`);
+    return 'failed';
+  }
+  await page.waitForTimeout(1000);
+
+  // ===== 保存成功の検証: ￥押下後にページ状態を確認 =====
+  // 下書き保存後は右パネルの状態が変化する（保存済み表示になる等）
+  // ここでは簡易的にエラーダイアログが出ていないことを確認
+  const hasError = await page.evaluate(() => {
+    const errorDialog = document.querySelector('[role="alertdialog"], [role="alert"]');
+    if (errorDialog) {
+      const text = errorDialog.textContent || '';
+      if (text.includes('エラー') || text.includes('失敗')) return text.substring(0, 100);
+    }
+    return null;
+  });
+  if (hasError) {
+    console.error(`  ✗ 保存後エラー検出: ${hasError}`);
+    return 'failed';
+  }
+
+  console.log('  ✓ ￥ 下書き保存 完了');
   return 'saved';
 }
 
 /**
- * 主訴・所見 + 処置・行為 の複写ボタンをクリック
+ * 主訴・所見 + 処置・行為 の複写ボタンをクリック（検証付き）
+ * 各セクションごとにリトライし、成否を返す
  */
-async function doCopyButtons(page) {
-  try {
-    await clickSectionCopyButton(page, '主訴・所見');
-    console.log('  ✓ 主訴・所見 複写');
-  } catch (e) { console.warn(`  ⚠ 主訴・所見: ${e.message}`); }
-  await page.waitForTimeout(800);
+async function doCopyButtonsWithVerify(page) {
+  const result = { shuso: false, shochi: false };
+  const MAX_RETRIES = 2;
 
-  try {
-    await clickSectionCopyButton(page, '処置・行為');
-    console.log('  ✓ 処置・行為 複写');
-  } catch (e) { console.warn(`  ⚠ 処置・行為: ${e.message}`); }
-  await page.waitForTimeout(800);
+  // --- 主訴・所見 ---
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      await clickSectionCopyButton(page, '主訴・所見');
+      await page.waitForTimeout(1000);
+      // 複写ボタンクリック後、右パネルに内容が入ったかを簡易チェック
+      const hasContent = await checkSectionHasContent(page, '主訴');
+      if (hasContent) {
+        console.log('  ✓ 主訴・所見 複写');
+        result.shuso = true;
+        break;
+      } else if (attempt < MAX_RETRIES) {
+        console.warn(`  ⚠ 主訴・所見 複写内容未反映 → リトライ (${attempt}/${MAX_RETRIES})`);
+        await page.waitForTimeout(500);
+      } else {
+        console.warn(`  ⚠ 主訴・所見 複写内容未反映 (${MAX_RETRIES}回試行)`);
+      }
+    } catch (e) {
+      if (attempt < MAX_RETRIES) {
+        console.warn(`  ⚠ 主訴・所見: ${e.message} → リトライ (${attempt}/${MAX_RETRIES})`);
+        await page.waitForTimeout(500);
+      } else {
+        console.warn(`  ⚠ 主訴・所見: ${e.message} (${MAX_RETRIES}回試行)`);
+      }
+    }
+  }
+
+  // --- 処置・行為 ---
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      await clickSectionCopyButton(page, '処置・行為');
+      await page.waitForTimeout(1000);
+      const hasContent = await checkSectionHasContent(page, '処置');
+      if (hasContent) {
+        console.log('  ✓ 処置・行為 複写');
+        result.shochi = true;
+        break;
+      } else if (attempt < MAX_RETRIES) {
+        console.warn(`  ⚠ 処置・行為 複写内容未反映 → リトライ (${attempt}/${MAX_RETRIES})`);
+        await page.waitForTimeout(500);
+      } else {
+        console.warn(`  ⚠ 処置・行為 複写内容未反映 (${MAX_RETRIES}回試行)`);
+      }
+    } catch (e) {
+      if (attempt < MAX_RETRIES) {
+        console.warn(`  ⚠ 処置・行為: ${e.message} → リトライ (${attempt}/${MAX_RETRIES})`);
+        await page.waitForTimeout(500);
+      } else {
+        console.warn(`  ⚠ 処置・行為: ${e.message} (${MAX_RETRIES}回試行)`);
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -392,6 +506,53 @@ async function checkEditingAreaEmpty(page) {
     // 右パネルに実質的なテキストがなければ空
     return allText.length === 0;
   });
+}
+
+/**
+ * 右パネルの特定セクション付近にテキスト内容があるかチェック
+ * keyword: '主訴' or '処置'
+ */
+async function checkSectionHasContent(page, keyword) {
+  return await page.evaluate((kw) => {
+    // 右パネル（left >= 530）でキーワード付近のテキストを探す
+    const ignoreLabels = ['主訴・所見', '処置・行為', 'キーワード', '下書き', '未承認',
+      'シェーマ追加', '処方箋備考', '適応症追加', '心療内科', '木村友哉',
+      '複写', '保存', '削除', '承認'];
+
+    // まず右パネル内のセクションヘッダー位置を特定
+    let sectionTop = 0;
+    let sectionBottom = 2000;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while (node = walker.nextNode()) {
+      const el = node.parentElement;
+      if (!el) continue;
+      const text = node.textContent.trim();
+      if (text.includes(kw) && text.length < 20) {
+        const rect = el.getBoundingClientRect();
+        if (rect.left >= 530 && rect.width > 0) {
+          sectionTop = rect.top;
+          sectionBottom = sectionTop + 400; // セクション領域
+          break;
+        }
+      }
+    }
+
+    // セクション領域内で実質的テキストを探す
+    const walker2 = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (node = walker2.nextNode()) {
+      const el = node.parentElement;
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.left < 530 || rect.width === 0 || rect.height === 0) continue;
+      if (rect.top < sectionTop + 20 || rect.top > sectionBottom) continue;
+      const t = node.textContent.trim();
+      if (t.length > 2 && !ignoreLabels.some(l => t.includes(l))) {
+        return true;
+      }
+    }
+    return false;
+  }, keyword);
 }
 
 /**
