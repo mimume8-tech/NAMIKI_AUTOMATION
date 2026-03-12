@@ -1232,107 +1232,136 @@
   // ══════════════════════════════════════════════════════════════
   // カルテ更新（Phase 2 スタブ — 今回は最低限のみ）
   // ══════════════════════════════════════════════════════════════
+  /**
+   * ページ上の全SVGボタンを試行して「カルテ更新」モーダルを開く
+   * 方法: 医療保険セクションや公費セクション周辺のSVGボタン（鉛筆マーク）を
+   *       順番にクリックし、カルテ更新モーダルが開くものを探す
+   */
   async function openChartUpdateModal() {
     log("STEP: カルテ更新モーダルを開く（Phase 2）");
 
-    // === 方法1: 公費行の鉛筆マーク（✏️）アイコンをクリック ===
-    // 21000000 テキストを含む要素を探し、その近くの鉛筆ボタンを押す
+    // === 方法1: 「編集」テキストを含むクリック可能な要素を探す ===
+    // button だけでなく a, span, div 等も対象
+    log("方法1: 「編集」要素を探索");
+    const editEl = findTextElement("編集");
+    if (editEl && editEl.offsetParent !== null) {
+      // モーダル内でなければクリック
+      if (!editEl.closest('[class*="modal"], [class*="Modal"], [role="dialog"]')) {
+        const clickTarget = editEl.closest("button, a, [role='button']") || editEl;
+        safeClick(clickTarget);
+        log("「編集」要素をクリック:", clickTarget.tagName);
+        await sleep(1500);
+        const modal = findModalByTitle("カルテ更新");
+        if (modal) {
+          log("カルテ更新モーダルが開きました（編集ボタン経由）");
+          await sleep(500);
+          return modal;
+        }
+        debug("「編集」クリックでカルテ更新が開かなかった");
+      }
+    }
+
+    // === 方法2: 医療保険セクションの鉛筆マーク ===
+    // 「医療保険」テキスト近くのSVGボタンを探す
+    log("方法2: 医療保険セクションの鉛筆マークを探索");
+    const insuranceEl = findTextElement("医療保険");
+    if (insuranceEl) {
+      let section = insuranceEl;
+      for (let i = 0; i < 6; i++) {
+        section = section.parentElement;
+        if (!section) break;
+        // SVGボタンを収集
+        const svgBtns = Array.from(
+          section.querySelectorAll("button, a, [role='button']")
+        ).filter((b) => b.querySelector("svg") && b.offsetParent !== null);
+
+        if (svgBtns.length > 0) {
+          debug(`医療保険セクション内のSVGボタン: ${svgBtns.length} 個`);
+          // 最後のSVGボタン（鉛筆マーク）からクリック
+          for (let j = svgBtns.length - 1; j >= 0; j--) {
+            safeClick(svgBtns[j]);
+            log(`医療保険セクションのSVGボタン[${j}]をクリック`);
+            await sleep(1500);
+            const modal = findModalByTitle("カルテ更新");
+            if (modal) {
+              log("カルテ更新モーダルが開きました（医療保険鉛筆経由）");
+              await sleep(500);
+              return modal;
+            }
+            // 別のモーダルが開いた場合は閉じる
+            const anyModal = document.querySelector('[class*="modal"], [role="dialog"]');
+            if (anyModal) {
+              const closeBtn = anyModal.querySelector('[aria-label="close"], [class*="close"]')
+                || findButtonByText("×", anyModal) || findButtonByText("✕", anyModal);
+              if (closeBtn) { safeClick(closeBtn); await sleep(500); }
+            }
+          }
+          break; // セクション見つかったので終了
+        }
+      }
+    }
+
+    // === 方法3: 公費行の鉛筆マーク（21000000行） ===
+    log("方法3: 公費行(21000000)の鉛筆マークを探索");
     const futanshaEl = findTextElement(TEMP_FUTANSHA);
     if (futanshaEl) {
-      // 鉛筆ボタンは同じ行の右端にある
       let container = futanshaEl;
       for (let i = 0; i < 5; i++) {
         container = container.parentElement;
         if (!container) break;
-        // SVG を含むボタン（鉛筆アイコン）を探す
-        const btns = container.querySelectorAll("button, a, [role='button']");
-        for (const btn of btns) {
-          if (!btn.querySelector("svg")) continue;
-          // 更新（🔄）と鉛筆（✏️）の区別: 鉛筆はpath内容で判定
-          // どちらか不明でもクリックしてカルテ更新が開けばOK
-          const svgPaths = btn.querySelectorAll("path");
-          for (const p of svgPaths) {
-            const d = p.getAttribute("d") || "";
-            // 鉛筆アイコンは一般的に M3... や M14... 等のedit系パス
-            // 更新アイコン（🔄）はM17.65... や circular パス
-            // 安全策: 両方試して、カルテ更新モーダルが開くものを採用
-            if (d.length > 10) {
-              debug(`鉛筆候補: d="${d.substring(0, 30)}..."`);
+        const svgBtns = Array.from(
+          container.querySelectorAll("button, a, [role='button']")
+        ).filter((b) => b.querySelector("svg") && b.offsetParent !== null);
+        if (svgBtns.length > 0) {
+          for (let j = svgBtns.length - 1; j >= 0; j--) {
+            safeClick(svgBtns[j]);
+            log(`公費行のSVGボタン[${j}]をクリック`);
+            await sleep(1500);
+            const modal = findModalByTitle("カルテ更新");
+            if (modal) {
+              log("カルテ更新モーダルが開きました（公費鉛筆経由）");
+              await sleep(500);
+              return modal;
+            }
+            // 別のモーダルが開いた場合は閉じる
+            const anyModal = document.querySelector('[class*="modal"], [role="dialog"]');
+            if (anyModal) {
+              const closeBtn = anyModal.querySelector('[aria-label="close"], [class*="close"]')
+                || findButtonByText("×", anyModal) || findButtonByText("✕", anyModal);
+              if (closeBtn) { safeClick(closeBtn); await sleep(500); }
             }
           }
+          break;
         }
-        // SVG含むボタンが複数ある場合、最後のもの（右端＝鉛筆）を選ぶ
-        const svgBtns = Array.from(btns).filter(
-          (b) => b.querySelector("svg") && b.offsetParent !== null
-        );
-        if (svgBtns.length >= 2) {
-          // 右端のボタン（鉛筆マーク）を選択
-          const pencilBtn = svgBtns[svgBtns.length - 1];
-          safeClick(pencilBtn);
-          log("公費行の鉛筆マークをクリック（最右端SVGボタン）");
-          try {
-            const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 5000);
-            log("カルテ更新モーダルが開きました");
-            await sleep(500);
-            return modal;
-          } catch (e) {
-            debug("最右端ボタンではカルテ更新が開かなかった → 他の方法を試行");
-          }
-        } else if (svgBtns.length === 1) {
-          safeClick(svgBtns[0]);
-          log("公費行のSVGボタンをクリック");
-          try {
-            const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 5000);
-            log("カルテ更新モーダルが開きました");
-            await sleep(500);
-            return modal;
-          } catch (e) {
-            debug("SVGボタンではカルテ更新が開かなかった → 他の方法を試行");
-          }
-        }
-        if (svgBtns.length > 0) break; // ボタンは見つけたが失敗した場合も次へ
       }
     }
 
-    // === 方法2: 画面上部の「編集」ボタン/タブ ===
-    log("方法2: 画面上部の「編集」ボタンを探索");
-    const editBtn = findButtonByText("編集");
-    if (editBtn && editBtn.offsetParent !== null) {
-      safeClick(editBtn);
-      log("「編集」ボタンをクリック");
-      try {
-        const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 5000);
-        log("カルテ更新モーダルが開きました");
+    // === 方法4: ページ上の全SVGボタンを総当たり ===
+    log("方法4: 全ページのSVGボタンを総当たり");
+    const allBtns = document.querySelectorAll("button, a, [role='button']");
+    for (const btn of allBtns) {
+      if (!btn.querySelector("svg") || btn.offsetParent === null) continue;
+      // モーダル内のボタンはスキップ
+      if (btn.closest('[class*="modal"], [role="dialog"]')) continue;
+      safeClick(btn);
+      debug(`総当たり: SVGボタンをクリック (${btn.outerHTML.substring(0, 80)})`);
+      await sleep(1200);
+      const modal = findModalByTitle("カルテ更新");
+      if (modal) {
+        log("カルテ更新モーダルが開きました（総当たり）");
         await sleep(500);
         return modal;
-      } catch (e) {
-        debug("「編集」ボタンではカルテ更新が開かなかった");
+      }
+      // 別のモーダルが開いた場合は閉じる
+      const anyModal = document.querySelector('[class*="modal"], [role="dialog"]');
+      if (anyModal) {
+        const closeBtn = anyModal.querySelector('[aria-label="close"], [class*="close"]')
+          || findButtonByText("×", anyModal) || findButtonByText("✕", anyModal);
+        if (closeBtn) { safeClick(closeBtn); await sleep(500); }
       }
     }
 
-    // === 方法3: 全SVGボタンから鉛筆アイコンを総探索 ===
-    log("方法3: 全ページから鉛筆アイコンを総探索");
-    const allSvgBtns = document.querySelectorAll("button svg, [role='button'] svg");
-    for (const svg of allSvgBtns) {
-      const btn = svg.closest("button") || svg.closest("[role='button']");
-      if (!btn || btn.offsetParent === null) continue;
-      // 公費セクション（21000000の近く）のボタンだけ対象
-      const parent = btn.parentElement?.parentElement?.parentElement;
-      if (parent && parent.textContent.includes(TEMP_FUTANSHA)) {
-        safeClick(btn);
-        log("公費セクション内のSVGボタンをクリック");
-        try {
-          const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 5000);
-          log("カルテ更新モーダルが開きました");
-          await sleep(500);
-          return modal;
-        } catch (e) {
-          debug("このボタンではカルテ更新が開かなかった → 次へ");
-        }
-      }
-    }
-
-    throw new Error("カルテ更新モーダルの開き方が見つかりません");
+    throw new Error("カルテ更新モーダルの開き方が見つかりません。手動で鉛筆マークをクリックしてください。");
   }
 
   async function selectJiritsuToPublic1() {
@@ -1539,9 +1568,14 @@
       log("===== Phase 1（公費追加）完了 =====");
       showToast("公費追加が完了しました！", "success");
 
+      // Phase 1 完了後、ページ更新を待つ（DOM再描画 + 公費一覧反映）
+      log("Phase 2 準備: ページ更新を待機...");
+      await sleep(3000);
+
       // Phase 2: カルテ更新（失敗しても Phase 1 は有効）
       try {
         step = "カルテ更新モーダルを開く";
+        log("===== Phase 2（カルテ更新）開始 =====");
         await openChartUpdateModal();
 
         step = "公費1に自立仮番をセット";
