@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      3.2.0
+// @version      3.3.0
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -732,6 +732,67 @@
     safeClick(saveBtn);
     log("一時保存ボタンをクリック");
     await sleep(1500);
+
+    // 「予約済みのカルテは下書きで保存されます」ダイアログを処理
+    await handleDraftSaveDialog();
+  }
+
+  /**
+   * 下書き保存ダイアログ（「予約済みのカルテは下書きで保存されます」）を自動処理
+   * 「下書き保存」ボタンをクリックする
+   */
+  async function handleDraftSaveDialog() {
+    log("下書き保存ダイアログを探索...");
+
+    // 「下書き保存」ボタンを探す（ダイアログ内）
+    const draftBtn = await waitForElement(() => {
+      return findButtonByText("下書き保存");
+    }, 5000, 300).catch(() => null);
+
+    if (draftBtn) {
+      safeClick(draftBtn);
+      log("「下書き保存」ボタンをクリック");
+      await sleep(2000);
+
+      // ダイアログが閉じるのを待つ
+      try {
+        await waitForCondition(() => !findButtonByText("下書き保存"), 5000, 300);
+        log("下書き保存ダイアログが閉じました ✓");
+      } catch (e) {
+        warn("下書き保存ダイアログがまだ開いている可能性があります");
+      }
+    } else {
+      debug("下書き保存ダイアログは表示されませんでした（予約なし患者の可能性）");
+    }
+  }
+
+  /**
+   * カルテページから患者一覧（その日のリスト）に戻る
+   * 下書き保存後、ページがカルテのままなら戻る操作を行う
+   */
+  async function navigateBackToPatientList() {
+    // 既に保険セルが見えるなら（一覧ページにいるなら）何もしない
+    if (findInsuranceCellInChartList()) {
+      log("既に患者一覧ページにいます");
+      return;
+    }
+
+    // カルテページにいる場合、ブラウザの戻るボタンで一覧に戻る
+    // URLパターン: /karte/patients/... → 戻ると /reception/... or 日別一覧
+    log("history.back() で患者一覧に戻ります");
+    history.back();
+    await sleep(3000);
+
+    // 一覧が表示されるのを待つ
+    try {
+      await waitForElement(() => findInsuranceCellInChartList(), 10000, 500);
+      log("患者一覧に戻りました ✓");
+    } catch (e) {
+      // 戻れなかった場合、もう一度試す
+      warn("患者一覧が表示されません。もう一度戻ります...");
+      history.back();
+      await sleep(3000);
+    }
   }
 
   function findInsuranceCellInChartList() {
@@ -765,6 +826,85 @@
         safeClick(editBtn);
         log("保険セル内の編集アイコンもクリック");
         await sleep(1200);
+      }
+    }
+  }
+
+  /**
+   * 予約編集モーダルで公費1に21(自立支援)を選択し、更新ボタンを押す
+   */
+  async function selectKouhi1InReservationEditAndUpdate() {
+    log("STEP: 予約編集モーダルで公費1に自立仮番をセット");
+
+    // 予約編集モーダルが開くのを待つ
+    const modal = await waitForElement(() => findModalByTitle("予約編集"), 8000, 300).catch(() => null);
+    if (!modal) throw new Error("予約編集モーダルが見つかりません");
+    await sleep(500);
+
+    // 公費1の select を探す
+    // 方法1: name="expenseAndBurden1" で直接探す
+    let kouhi1Select = modal.querySelector('select[name="expenseAndBurden1"]');
+
+    // 方法2: ラベル "1" の行にある select を探す
+    if (!kouhi1Select) {
+      kouhi1Select = findNumberedSelect(modal, "1");
+    }
+
+    // 方法3: 21000000/精神通院 のオプションを持つ select を探す
+    if (!kouhi1Select) {
+      const selects = modal.querySelectorAll("select");
+      for (const sel of selects) {
+        const opt = findTemporaryJiritsuOption(sel);
+        if (opt) {
+          kouhi1Select = sel;
+          break;
+        }
+      }
+    }
+
+    if (!kouhi1Select) {
+      warn("予約編集モーダルで公費1の select が見つかりません");
+      showToast("予約編集で公費1を手動で選択してください", "warn");
+      return;
+    }
+
+    // 21000000/精神通院 のオプションを選択
+    const targetOpt = findTemporaryJiritsuOption(kouhi1Select);
+    if (targetOpt) {
+      if (kouhi1Select.value !== targetOpt.value) {
+        setSelectValue(kouhi1Select, targetOpt.value);
+        log(`予約編集 公費1 → "${targetOpt.textContent.trim().substring(0, 50)}" を選択`);
+      } else {
+        log(`予約編集 公費1: 既に "${targetOpt.textContent.trim().substring(0, 50)}" が選択済み ✓`);
+      }
+    } else {
+      warn("予約編集モーダルで21000000/精神通院のオプションが見つかりません");
+      showToast("予約編集で公費1を手動で選択してください", "warn");
+      return;
+    }
+    await sleep(300);
+
+    // 更新ボタンをクリック
+    const updateBtn = findButtonByText("更新", modal);
+    if (!updateBtn) throw new Error("予約編集の「更新」ボタンが見つかりません");
+
+    safeClick(updateBtn);
+    log("予約編集の更新ボタンをクリック");
+
+    // 確認ダイアログがあれば処理
+    await sleep(800);
+    await handleCustomConfirmDialog();
+
+    // モーダルが閉じるのを待つ
+    try {
+      await waitForCondition(() => !findModalByTitle("予約編集"), 8000);
+      log("予約編集モーダルが閉じました ✓");
+    } catch (e) {
+      await handleCustomConfirmDialog();
+      await sleep(1000);
+      if (findModalByTitle("予約編集")) {
+        warn("予約編集モーダルが閉じません。手動で確認してください。");
+        showToast("予約編集を確認してください", "warn");
       }
     }
   }
@@ -1951,11 +2091,19 @@
         step = "カルテを一時保存";
         await clickChartTemporarySaveButton();
 
+        // 下書き保存後、患者一覧に戻る
+        step = "患者一覧に戻る";
+        log("患者一覧に戻ります...");
+        await navigateBackToPatientList();
+
         step = "カルテ一覧の保険セルを開く";
         await clickInsuranceCellInChartList();
 
+        step = "予約編集で公費1を選択し更新";
+        await selectKouhi1InReservationEditAndUpdate();
+
         log("===== Phase 2（カルテ更新）完了 =====");
-        showToast("保険セルを開くところまで完了しました！", "success");
+        showToast("全工程が完了しました！", "success");
       } catch (err2) {
         warn(`Phase 2 エラー [${step}]: ${err2.message}`);
         showToast(`公費追加は完了。カルテ更新は手動で行ってください: ${err2.message}`, "warn");
@@ -2053,7 +2201,7 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v3.2.0 初期化");
+    log("v3.3.0 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
     setTimeout(() => { ensureButton(); startObserver(); }, 2000);
   }
