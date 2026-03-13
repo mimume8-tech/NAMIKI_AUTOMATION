@@ -610,80 +610,181 @@ async function ensurePrintModePanel(page) {
         const style = document.createElement("style");
         style.id = styleId;
         style.textContent = `
+          /* ── 展開状態 ── */
           #${panelId} {
             position: fixed;
             top: 84px;
             right: 16px;
             z-index: 2147483647;
-            width: 220px;
-            padding: 12px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, 0.18);
-            border: 1px solid rgba(15, 23, 42, 0.35);
-            color: #0f172a;
-            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+            width: 200px;
+            padding: 0;
+            background: transparent;
+            border: none;
             font-family: "Yu Gothic UI", "Segoe UI", sans-serif;
-            backdrop-filter: blur(6px);
+            transition: width 0.3s, height 0.3s, border-radius 0.3s;
           }
           #${panelId} .print-rx-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            margin-bottom: 8px;
+            justify-content: center;
+            padding: 4px 0 6px;
             cursor: move;
             user-select: none;
+            opacity: 0.35;
+            transition: opacity 0.2s;
           }
-          #${panelId} .print-rx-title {
-            margin: 0;
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.02em;
+          #${panelId} .print-rx-header:hover {
+            opacity: 0.7;
           }
           #${panelId} .print-rx-grip {
-            font-size: 12px;
-            color: rgba(15, 23, 42, 0.55);
-          }
-          #${panelId} .print-rx-status {
-            margin: 0 0 10px;
-            font-size: 12px;
-            color: rgba(15, 23, 42, 0.72);
+            font-size: 11px;
+            color: #64748b;
+            letter-spacing: 0.15em;
           }
           #${panelId} .print-rx-actions {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
           }
-          #${panelId} button[data-mode],
-          #${panelId} button[data-role="reset-pos"] {
-            border: 1px solid rgba(15, 23, 42, 0.24);
-            border-radius: 9px;
-            padding: 8px 10px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #0f172a;
-            background: rgba(255, 255, 255, 0.24);
+          #${panelId} button[data-mode] {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 56px;
+            border: none;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
             cursor: pointer;
+            color: #fff;
+            background: linear-gradient(145deg, rgba(51, 65, 85, 0.7), rgba(30, 41, 59, 0.85));
+            backdrop-filter: blur(12px);
+            box-shadow:
+              0 6px 16px rgba(15, 23, 42, 0.3),
+              0 2px 4px rgba(15, 23, 42, 0.15),
+              inset 0 1px 0 rgba(255,255,255,0.18),
+              inset 0 -2px 0 rgba(0,0,0,0.12);
+            transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+          }
+          #${panelId} button[data-mode]:hover {
+            transform: translateY(-2px);
+            box-shadow:
+              0 10px 24px rgba(15, 23, 42, 0.35),
+              0 3px 6px rgba(15, 23, 42, 0.2),
+              inset 0 1px 0 rgba(255,255,255,0.22),
+              inset 0 -2px 0 rgba(0,0,0,0.1);
+          }
+          #${panelId} button[data-mode]:active {
+            transform: translateY(1px) scale(0.97);
+            box-shadow:
+              0 2px 6px rgba(15, 23, 42, 0.3),
+              inset 0 2px 4px rgba(0,0,0,0.15);
+          }
+          #${panelId} button[data-mode="rx_only"] {
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.85), rgba(29, 78, 216, 0.92));
+          }
+          #${panelId} button[data-mode="all_pages"] {
+            background: linear-gradient(145deg, rgba(100, 116, 139, 0.7), rgba(71, 85, 105, 0.82));
           }
           #${panelId} button[data-mode].is-active {
-            background: rgba(15, 23, 42, 0.12);
-            border-color: rgba(15, 23, 42, 0.45);
+            box-shadow:
+              0 0 0 2.5px rgba(255,255,255,0.55),
+              0 6px 20px rgba(15, 23, 42, 0.3),
+              inset 0 1px 0 rgba(255,255,255,0.2),
+              inset 0 -2px 0 rgba(0,0,0,0.1);
+          }
+          #${panelId} button[data-mode].is-active::after {
+            content: "";
+            position: absolute;
+            inset: -3px;
+            border-radius: 19px;
+            border: 2px solid rgba(255,255,255,0.45);
+            pointer-events: none;
           }
           #${panelId} .print-rx-footer {
-            margin-top: 8px;
             display: flex;
-            justify-content: flex-end;
+            justify-content: center;
+            margin-top: 6px;
           }
           #${panelId} button[data-role="reset-pos"] {
-            padding: 5px 8px;
-            font-size: 11px;
+            border: none;
             background: transparent;
+            padding: 4px 8px;
+            font-size: 10px;
+            color: rgba(100, 116, 139, 0.5);
+            cursor: pointer;
+            transition: color 0.2s;
           }
+          #${panelId} button[data-role="reset-pos"]:hover {
+            color: rgba(100, 116, 139, 0.9);
+          }
+          #${panelId} .print-rx-status,
           #${panelId} .print-rx-note {
-            margin-top: 10px;
-            font-size: 11px;
-            color: rgba(15, 23, 42, 0.62);
-            line-height: 1.45;
+            display: none;
+          }
+
+          /* ── 折り畳みボタン (常に表示) ── */
+          #${panelId} .print-rx-collapse-btn {
+            position: absolute;
+            top: -2px;
+            right: 0;
+            width: 22px;
+            height: 22px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(51, 65, 85, 0.6);
+            color: #fff;
+            font-size: 13px;
+            line-height: 22px;
+            text-align: center;
+            cursor: pointer;
+            opacity: 0.4;
+            transition: opacity 0.2s, transform 0.2s, background 0.2s;
+            z-index: 1;
+          }
+          #${panelId} .print-rx-collapse-btn:hover {
+            opacity: 0.9;
+            background: rgba(51, 65, 85, 0.85);
+            transform: scale(1.1);
+          }
+
+          /* ── 畳んだ状態 ── */
+          #${panelId}.is-collapsed .print-rx-header,
+          #${panelId}.is-collapsed .print-rx-actions,
+          #${panelId}.is-collapsed .print-rx-footer,
+          #${panelId}.is-collapsed .print-rx-status,
+          #${panelId}.is-collapsed .print-rx-note {
+            display: none !important;
+          }
+          #${panelId}.is-collapsed {
+            width: 44px !important;
+            height: 44px !important;
+            overflow: hidden;
+          }
+          #${panelId}.is-collapsed .print-rx-collapse-btn {
+            position: static;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            font-size: 20px;
+            line-height: 44px;
+            opacity: 0.75;
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.8), rgba(29, 78, 216, 0.9));
+            box-shadow:
+              0 4px 14px rgba(15, 23, 42, 0.3),
+              inset 0 1px 0 rgba(255,255,255,0.2),
+              inset 0 -2px 0 rgba(0,0,0,0.12);
+          }
+          #${panelId}.is-collapsed .print-rx-collapse-btn:hover {
+            opacity: 1;
+            transform: scale(1.08);
+            box-shadow:
+              0 6px 20px rgba(37, 99, 235, 0.4),
+              inset 0 1px 0 rgba(255,255,255,0.25),
+              inset 0 -2px 0 rgba(0,0,0,0.1);
           }
         `;
         document.head.appendChild(style);
@@ -694,9 +795,9 @@ async function ensurePrintModePanel(page) {
         panel = document.createElement("aside");
         panel.id = panelId;
         panel.innerHTML = `
+          <button type="button" class="print-rx-collapse-btn" data-role="collapse" title="折り畳み / 展開">−</button>
           <div class="print-rx-header" data-role="drag-handle">
-            <div class="print-rx-title">印刷モード</div>
-            <div class="print-rx-grip">移動</div>
+            <div class="print-rx-grip">⋮⋮</div>
           </div>
           <div class="print-rx-status" data-role="status"></div>
           <div class="print-rx-actions">
@@ -704,9 +805,9 @@ async function ensurePrintModePanel(page) {
             <button type="button" data-mode="all_pages">全部印刷</button>
           </div>
           <div class="print-rx-footer">
-            <button type="button" data-role="reset-pos">位置を戻す</button>
+            <button type="button" data-role="reset-pos">位置リセット</button>
           </div>
-          <div class="print-rx-note">ボタンを押すと会計→印刷まで自動実行します。</div>
+          <div class="print-rx-note"></div>
         `;
 
         const findYenButton = () => {
@@ -719,7 +820,24 @@ async function ensurePrintModePanel(page) {
           return null;
         };
 
+        // 折り畳み状態を復元
+        const collapseKey = positionKey + "_collapsed";
+        const collapseBtn = panel.querySelector('[data-role="collapse"]');
+        if (localStorage.getItem(collapseKey) === "1") {
+          panel.classList.add("is-collapsed");
+          collapseBtn.textContent = "🖨";
+        }
+
         panel.addEventListener("click", (event) => {
+          // 折り畳みトグル
+          const collapse = event.target.closest('[data-role="collapse"]');
+          if (collapse) {
+            const collapsed = panel.classList.toggle("is-collapsed");
+            collapse.textContent = collapsed ? "🖨" : "−";
+            localStorage.setItem(collapseKey, collapsed ? "1" : "0");
+            return;
+          }
+
           const button = event.target.closest("button[data-mode]");
           if (button) {
             writeMode(button.dataset.mode);
