@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      3.1.0
+// @version      3.1.1
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -528,6 +528,82 @@
     if (!closeBtn) return false;
     safeClick(closeBtn);
     return true;
+  }
+
+  function findModalCloseButton(modal) {
+    if (!modal) return null;
+
+    const modalRect = modal.getBoundingClientRect();
+    const candidates = Array.from(modal.querySelectorAll("button, a, [role='button']")).filter(isVisible);
+    let best = null;
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (const btn of candidates) {
+      const text = (btn.textContent || "").trim();
+      const meta = [
+        btn.getAttribute("title"),
+        btn.getAttribute("aria-label"),
+        btn.className?.toString?.(),
+        text,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const rect = btn.getBoundingClientRect();
+      let score = 0;
+
+      if (meta.includes("close") || meta.includes("閉じる") || meta.includes("閉")) score += 400;
+      if (text === "×" || text === "✕" || text === "x" || text === "X") score += 300;
+      if (btn.querySelector("svg")) score += 20;
+
+      score += Math.max(0, 120 - Math.abs(modalRect.right - rect.right));
+      score += Math.max(0, 120 - Math.abs(modalRect.top - rect.top));
+      if (rect.top <= modalRect.top + 120) score += 60;
+      if (rect.right >= modalRect.right - 160) score += 60;
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = btn;
+      }
+    }
+
+    return best;
+  }
+
+  async function closeModalByTitle(titleText, timeout = 0) {
+    const modal = timeout > 0
+      ? await waitForElement(() => findModalByTitle(titleText), timeout, 300).catch(() => null)
+      : findModalByTitle(titleText);
+
+    if (!modal) return false;
+
+    const closeBtn = findModalCloseButton(modal);
+    if (!closeBtn) {
+      warn(`モーダル「${titleText}」の閉じるボタンが見つかりません`);
+      return false;
+    }
+
+    safeClick(closeBtn);
+    log(`モーダル「${titleText}」を閉じるボタンをクリック`);
+
+    try {
+      await waitForCondition(() => !findModalByTitle(titleText), 5000, 250);
+      log(`モーダル「${titleText}」を閉じました ✓`);
+      return true;
+    } catch (e) {
+      warn(`モーダル「${titleText}」が閉じません: ${e.message}`);
+      return false;
+    }
+  }
+
+  async function closePublicExpenseHistoryModalIfPresent() {
+    const closed = await closeModalByTitle("公費更新履歴", 6000);
+    if (closed) {
+      await sleep(500);
+      return true;
+    }
+    return false;
   }
 
   async function tryOpenChartUpdateFromButton(btn, reason) {
@@ -1396,6 +1472,8 @@
    *       順番にクリックし、カルテ更新モーダルが開くものを探す
    */
   async function openChartUpdateModal() {
+    await closePublicExpenseHistoryModalIfPresent();
+
     // Method 0: prefer the edit button on the newly added 21000000 row.
     const publicRowEditBtn = await waitForElement(
       () => findPublicExpenseRowEditButton(TEMP_FUTANSHA),
@@ -1765,6 +1843,9 @@
 
       step = "公費追加の登録";
       await submitPublicExpenseAdd();
+
+      step = "公費更新履歴を閉じる";
+      await closePublicExpenseHistoryModalIfPresent();
 
       log("===== Phase 1（公費追加）完了 =====");
       showToast("公費追加が完了しました！", "success");
