@@ -11,3 +11,11 @@ node_modules/
 .playwright-profile/
 exports/
 *.lnk
+chrome-debug-profile/
+**/chrome-debug-profile/
+Crashpad/
+BrowserMetrics-*.pma
+First Run
+Last *
+Local State
+lockfile
