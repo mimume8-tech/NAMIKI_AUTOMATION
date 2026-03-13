@@ -17,6 +17,7 @@ const { chromium } = require("playwright");
 const pdfParse = require("pdf-parse");
 const { PDFDocument } = require("pdf-lib");
 const { spawn } = require("child_process");
+const { startCertificateDialogHelper } = require("./certificate_dialog_helper");
 
 // ── PC別設定ファイル読み込み ─────────────────────
 const PC_CONFIG_PATH = path.join(__dirname, "..", "config", "pc-config.json");
@@ -200,6 +201,7 @@ async function launchChrome() {
 }
 
 function startChromeProcess() {
+  startCertificateDialogHelper({ timeoutSeconds: 60, log });
   const child = spawn(
     CHROME_PATH,
     [
@@ -514,6 +516,35 @@ async function watchLoop(browser) {
 
     await ensurePrintModePanel(kartePage).catch(() => {});
 
+    // 下書き一括保存フラグチェック
+    const draftSaveRequested = await kartePage
+      .evaluate(() => {
+        const val = localStorage.getItem("__draft_save_requested");
+        if (val === "1") {
+          localStorage.removeItem("__draft_save_requested");
+          return true;
+        }
+        return false;
+      })
+      .catch(() => false);
+
+    if (draftSaveRequested) {
+      log("下書き一括保存 開始 → 別ウィンドウで実行します...");
+      try {
+        const draftChild = spawn(
+          "cmd",
+          ["/c", "start", "", "cmd", "/c",
+           `node tools/draft-save.js && pause`],
+          { cwd: path.join(__dirname, ".."), detached: true, stdio: "ignore" }
+        );
+        draftChild.unref();
+      } catch (err) {
+        log(`下書き保存起動エラー: ${err.message}`);
+      }
+      await sleep(2000);
+      continue;
+    }
+
     const modalOpen = await isAccountingModalOpen(kartePage);
     if (!modalOpen) {
       await sleep(POLL_INTERVAL_MS);
@@ -721,6 +752,39 @@ async function ensurePrintModePanel(page) {
           #${panelId} button[data-role="reset-pos"]:hover {
             color: rgba(100, 116, 139, 0.9);
           }
+          #${panelId} .print-rx-draft-btn {
+            width: 100%;
+            height: 48px;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            cursor: pointer;
+            color: #fff;
+            background: linear-gradient(145deg, rgba(34, 197, 94, 0.85), rgba(22, 163, 74, 0.92));
+            backdrop-filter: blur(12px);
+            box-shadow:
+              0 6px 16px rgba(15, 23, 42, 0.3),
+              0 2px 4px rgba(15, 23, 42, 0.15),
+              inset 0 1px 0 rgba(255,255,255,0.18),
+              inset 0 -2px 0 rgba(0,0,0,0.12);
+            transition: transform 0.15s, box-shadow 0.15s;
+          }
+          #${panelId} .print-rx-draft-btn:hover {
+            transform: translateY(-2px);
+            box-shadow:
+              0 10px 24px rgba(15, 23, 42, 0.35),
+              0 3px 6px rgba(15, 23, 42, 0.2),
+              inset 0 1px 0 rgba(255,255,255,0.22);
+          }
+          #${panelId} .print-rx-draft-btn:active {
+            transform: translateY(1px) scale(0.97);
+          }
+          #${panelId} .print-rx-draft-btn.is-running {
+            background: linear-gradient(145deg, rgba(234, 179, 8, 0.85), rgba(202, 138, 4, 0.92));
+            cursor: wait;
+          }
           #${panelId} .print-rx-status,
           #${panelId} .print-rx-note {
             display: none;
@@ -804,6 +868,10 @@ async function ensurePrintModePanel(page) {
             <button type="button" data-mode="rx_only">処方箋のみ</button>
             <button type="button" data-mode="all_pages">全部印刷</button>
           </div>
+          <div class="print-rx-draft-section" style="display:none">
+            <div style="height:1px;background:rgba(255,255,255,0.1);margin:10px 0 8px"></div>
+            <button type="button" data-role="draft-save" class="print-rx-draft-btn">下書き一括保存</button>
+          </div>
           <div class="print-rx-footer">
             <button type="button" data-role="reset-pos">位置リセット</button>
           </div>
@@ -847,6 +915,14 @@ async function ensurePrintModePanel(page) {
             if (yenBtn) {
               yenBtn.click();
             }
+            return;
+          }
+
+          const draftBtn = event.target.closest('button[data-role="draft-save"]');
+          if (draftBtn && !draftBtn.classList.contains("is-running")) {
+            draftBtn.classList.add("is-running");
+            draftBtn.textContent = "実行中...";
+            localStorage.setItem("__draft_save_requested", "1");
             return;
           }
 
@@ -920,6 +996,22 @@ async function ensurePrintModePanel(page) {
 
         if (typeof savedPosition.top === "number") {
           panel.style.top = `${savedPosition.top}px`;
+        }
+      }
+
+      // 受付ページなら下書きボタンを表示
+      const draftSection = panel.querySelector(".print-rx-draft-section");
+      if (draftSection) {
+        const isReception = location.href.includes("/reception");
+        draftSection.style.display = isReception ? "block" : "none";
+      }
+      // 下書き完了フラグがあればボタンを戻す
+      if (localStorage.getItem("__draft_save_completed") === "1") {
+        localStorage.removeItem("__draft_save_completed");
+        const dBtn = panel.querySelector('[data-role="draft-save"]');
+        if (dBtn) {
+          dBtn.classList.remove("is-running");
+          dBtn.textContent = "下書き一括保存";
         }
       }
 

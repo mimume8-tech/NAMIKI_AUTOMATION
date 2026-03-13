@@ -13,6 +13,7 @@ const { chromium } = require('playwright');
 const XLSX = require('xlsx');
 const { spawn, execSync } = require('child_process');
 const readline = require('readline');
+const { startCertificateDialogHelper } = require('./certificate_dialog_helper');
 
 // ===== 設定 =====
 const EXCEL_PATH = 'C:/Users/ykimu/Desktop/②レセ保留管理(月遅れおよび返戻再請求予定).xlsx';
@@ -71,8 +72,20 @@ function prompt(msg) {
 
   console.log(`Chrome を起動します（デバッグポート: ${DEBUG_PORT}）...`);
   // Windows のパスにスペースが含まれるため shell: true + 引用符で起動
-  const cmd = `start "" "${CHROME_PATH}" --remote-debugging-port=${DEBUG_PORT} "--user-data-dir=${CHROME_USER_DATA}" --profile-directory=Default "${receptionUrl}"`;
-  execSync(cmd, { stdio: 'ignore', shell: true });
+  startCertificateDialogHelper({ timeoutSeconds: 60, log: console.log });
+  const child = spawn(
+    CHROME_PATH,
+    [
+      `--remote-debugging-port=${DEBUG_PORT}`,
+      '--remote-debugging-address=127.0.0.1',
+      '--auto-select-certificate-for-urls={"pattern":"*://digikar.jp"}',
+      `--user-data-dir=${CHROME_USER_DATA}`,
+      '--profile-directory=Default',
+      receptionUrl,
+    ],
+    { detached: true, stdio: 'ignore' }
+  );
+  child.unref();
 
   // Chrome 起動待ち
   console.log('Chrome 起動待機中...');

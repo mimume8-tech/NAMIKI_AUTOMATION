@@ -19,6 +19,7 @@ const {
   DIGIKAR_USER_DATA,
   prepareDigikarProfile,
 } = require('./digikar_profile');
+const { startCertificateDialogHelper } = require('./certificate_dialog_helper');
 
 // ===== 設定 =====
 // デバッグモードには専用プロファイルが必須（Chrome の仕様）
@@ -64,11 +65,13 @@ async function waitForStable(page, ms = 1500) {
   try { execSync('taskkill /F /T /IM chrome.exe', { stdio: 'ignore' }); } catch {}
   await new Promise(r => setTimeout(r, 3000));
   prepareDigikarProfile();
+  startCertificateDialogHelper({ timeoutSeconds: 60, log: console.log });
 
   console.log('Chrome をデバッグモードで起動中...');
   const child = spawn(CHROME_PATH, [
     `--remote-debugging-port=${DEBUG_PORT}`,
     '--remote-debugging-address=127.0.0.1',
+    '--auto-select-certificate-for-urls={"pattern":"*://digikar.jp"}',
     '--no-first-run',
     '--new-window',
     `--user-data-dir=${DIGIKAR_USER_DATA}`,
