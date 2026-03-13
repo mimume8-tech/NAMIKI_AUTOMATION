@@ -541,6 +541,26 @@
   }
 
   // ══════════════════════════════════════════════
+  // 7. 確認画面 → 登録ボタン自動クリック
+  // ══════════════════════════════════════════════
+  async function doConfirm() {
+    show('確認画面 → 登録ボタンを自動クリック中...', BLUE);
+    await sleep(800);
+
+    const registerBtn =
+      document.querySelector('button[formaction*="prescription_registration/complete"][value="create"]') ||
+      document.querySelector('button[formaction*="/complete"][value="create"]');
+
+    if (registerBtn) {
+      submitClick(registerBtn);
+      show('登録完了', GREEN);
+    } else {
+      show('登録ボタンが見つかりません', RED);
+    }
+    fade();
+  }
+
+  // ══════════════════════════════════════════════
   // メインルーター
   // ══════════════════════════════════════════════
   async function main() {
@@ -559,6 +579,8 @@
       log('→ 施設確認'); await doFacility();
     } else if (path.includes('/prescription_registration/create')) {
       log('→ 処方登録'); await doCreate();
+    } else if (path.includes('/prescription_registration/confirm')) {
+      log('→ 確認画面'); await doConfirm();
     } else {
       log('対象外:', path);
     }
