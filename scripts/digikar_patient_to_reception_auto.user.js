@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DigiKar 患者メモ→受付メモ 手動転記
 // @namespace    https://digikar.jp/
-// @version      2.0.0
+// @version      2.1.0
 // @description  START を押した時だけ、未転記の受付メモへ患者メモを転記します。番号カードは保持し、左下パネルは折りたたみ・ドラッグ移動できます。
 // @match        https://digikar.jp/reception*
 // @match        https://digikar.jp/reception/*
@@ -14,7 +14,13 @@
   if (window.__DIGIKAR_PATIENT_TO_RECEPTION_MANUAL__) return;
   window.__DIGIKAR_PATIENT_TO_RECEPTION_MANUAL__ = true;
 
-  const APP = { id: 'dk-patient-to-reception-manual', key: 'dk-patient-to-reception-manual-v1', log: '[DKPatientToReceptionManual]' };
+  const APP = {
+    id: 'dk-patient-to-reception-manual',
+    key: 'dk-patient-to-reception-manual-v1',
+    log: '[DKPatientToReceptionManual]',
+    title: '患者メモ→受付メモ',
+    shortLabel: 'メモ',
+  };
   const HEADERS = { reservation: '予約', time: '時間', no: '患者番号', name: '患者氏名', patientMemo: '患者メモ', receptionMemo: '受付メモ' };
   const CFG = {
     waitMs: 100, scanSettleMs: 180, postInputMs: 80, postClickMs: 120,
@@ -38,6 +44,7 @@
     resizeBound: false,
     lastRowLabel: '',
     ui: null,
+    ignorePanelClickUntil: 0,
   };
 
   const log = (...args) => console.log(APP.log, ...args);
@@ -355,7 +362,7 @@
   }
 
   function findSaveButton(editor) {
-    const labels = ['保存', '更新', 'OK', '確定', '登録', '適用'];
+    const labels = ['保存', '更新', 'OK', '確定', '決定', '完了', '登録', '適用'];
     const findInRoot = (root) => Array.from(root.querySelectorAll('button')).find((btn) => labels.includes(String(btn.innerText || btn.textContent || '').trim()));
     let parent = editor?.parentElement;
     for (let i = 0; i < 12 && parent; i += 1) {
@@ -401,7 +408,7 @@
         const dx = Math.max(0, cellRect.left - cx, cx - cellRect.right);
         const dy = Math.max(0, cellRect.top - cy, cy - cellRect.bottom);
         const hint = (btn.getAttribute('aria-label') || '') + (btn.getAttribute('title') || '') + (btn.className || '') + (btn.getAttribute('data-testid') || '');
-        return { btn, inside, dist: Math.hypot(dx, dy), ok: /メモ|編集|edit|pencil/i.test(hint) };
+        return { btn, inside, dist: Math.hypot(dx, dy), ok: /メモ|受付|編集|edit|pencil/i.test(hint) };
       })
       .filter((item) => item.ok)
       .sort((a, b) => (b.inside - a.inside) || (a.dist - b.dist))[0]?.btn || null;
@@ -551,7 +558,9 @@
     if (!state.ui) return;
     state.ui.start.disabled = state.running;
     state.ui.stop.disabled = !state.running;
-    state.ui.collapse.textContent = state.ui.panel.dataset.collapsed === 'true' ? '▸' : '▾';
+    state.ui.collapse.textContent = '−';
+    state.ui.collapse.title = state.ui.panel.dataset.collapsed === 'true' ? '開く' : '小さくする';
+    state.ui.collapse.setAttribute('aria-label', state.ui.collapse.title);
   }
 
   async function startTransfer() {
@@ -614,16 +623,18 @@
     panel.style.top = 'auto';
   }
 
-  function enableDrag(panel, handle) {
+  function enableDrag(panel) {
     let dragging = false;
     let dx = 0;
     let dy = 0;
+    let moved = false;
 
-    handle.addEventListener('mousedown', (event) => {
+    panel.addEventListener('mousedown', (event) => {
       if (event.button !== 0) return;
       if (event.target.closest('button')) return;
       const rect = panel.getBoundingClientRect();
       dragging = true;
+      moved = false;
       dx = event.clientX - rect.left;
       dy = event.clientY - rect.top;
       panel.style.left = `${rect.left}px`;
@@ -636,6 +647,7 @@
 
     document.addEventListener('mousemove', (event) => {
       if (!dragging || !document.body.contains(panel)) return;
+      if (Math.abs(event.movementX) > 0 || Math.abs(event.movementY) > 0) moved = true;
       panel.style.left = `${event.clientX - dx}px`;
       panel.style.top = `${event.clientY - dy}px`;
     });
@@ -647,6 +659,7 @@
       if (!document.body.contains(panel)) return;
       clampPanel(panel);
       persistPanel(panel);
+      if (moved) state.ignorePanelClickUntil = Date.now() + 250;
     });
   }
 
@@ -679,82 +692,94 @@
   position:fixed;
   left:${CFG.leftPx}px;
   bottom:${CFG.bottomPx}px;
-  width:206px;
-  padding:8px;
-  border-radius:16px;
-  background:transparent;
-  border:1px solid rgba(255,255,255,.76);
-  box-shadow:0 10px 24px rgba(0,0,0,.18);
+  width:224px;
+  padding:10px;
+  border-radius:22px;
+  background:rgba(219,233,255,.78);
+  border:1px solid rgba(125,163,214,.78);
+  box-shadow:0 14px 34px rgba(34,76,135,.22);
+  backdrop-filter:blur(16px);
   z-index:2147483000;
   font-family:"Yu Gothic UI","Meiryo",sans-serif;
+  color:#143d69;
+  user-select:none;
+  box-sizing:border-box;
 }
+#${APP.id}, #${APP.id} *{box-sizing:border-box}
 #${APP.id}::before{
   content:"";
   position:absolute;
   inset:2px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.34);
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.56);
   pointer-events:none;
 }
+#${APP.id}[data-collapsed="true"]{
+  width:68px;
+  height:68px;
+  padding:0;
+  border-radius:999px;
+  background:rgba(199,221,255,.42);
+  border-color:rgba(120,162,219,.8);
+  box-shadow:0 12px 28px rgba(47,93,158,.22);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#${APP.id}[data-collapsed="true"]::before{
+  inset:4px;
+  border-radius:999px;
+}
 #${APP.id}[data-dragging="true"]{
-  box-shadow:0 14px 28px rgba(0,0,0,.24);
+  box-shadow:0 18px 36px rgba(34,76,135,.28);
+}
+#${APP.id} .dk-shell{
+  display:grid;
+  gap:10px;
 }
 #${APP.id} .dk-head{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:8px;
-  margin:0 0 10px;
-  cursor:grab;
-  user-select:none;
+  min-height:42px;
 }
-#${APP.id}[data-dragging="true"] .dk-head{cursor:grabbing}
-#${APP.id} .dk-flow{
+#${APP.id} .dk-title-wrap{
   display:flex;
-  align-items:center;
-  gap:6px;
-  min-height:28px;
-  padding:4px 8px;
-  border-radius:10px;
-  border:1px solid rgba(15,23,42,.12);
-  background:rgba(255,255,255,.82);
-  box-shadow:0 4px 10px rgba(0,0,0,.08);
+  flex-direction:column;
+  gap:3px;
+  flex:1;
+  min-width:0;
+  padding:8px 12px;
+  border-radius:16px;
+  background:rgba(255,255,255,.56);
+  border:1px solid rgba(156,186,227,.58);
 }
-#${APP.id} .dk-word{
+#${APP.id} .dk-title{
   font-size:13px;
   font-weight:900;
-  letter-spacing:.02em;
-  text-shadow:none;
+  letter-spacing:.04em;
+  color:#124b7d;
 }
-#${APP.id} .dk-word-patient{
-  color:#0f8a5b;
-}
-#${APP.id} .dk-arrow{
-  color:#475569;
-  font-size:16px;
-  font-weight:900;
-  text-shadow:none;
-}
-#${APP.id} .dk-word-reception{
-  color:#2563eb;
-}
-#${APP.id} .dk-tools{
-  display:flex;
-  align-items:center;
-  gap:6px;
+#${APP.id} .dk-sub{
+  font-size:10px;
+  font-weight:700;
+  color:#5b7da2;
 }
 #${APP.id} .dk-mini{
-  width:28px;
-  height:28px;
-  border-radius:10px;
-  border:1px solid rgba(15,23,42,.12);
-  background:rgba(255,255,255,.88);
-  color:#334155;
-  font-size:16px;
+  width:36px;
+  height:36px;
+  border-radius:14px;
+  border:1px solid rgba(142,178,222,.8);
+  background:rgba(255,255,255,.66);
+  color:#386795;
+  font-size:20px;
   font-weight:900;
-  text-shadow:none;
-  box-shadow:0 4px 10px rgba(0,0,0,.08);
+  box-shadow:0 6px 14px rgba(45,91,153,.14);
   cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 #${APP.id} .dk-body{
   display:grid;
@@ -763,72 +788,93 @@
 }
 #${APP.id}[data-collapsed="true"] .dk-body{display:none}
 #${APP.id} .dk-btn{
-  min-height:42px;
-  border-radius:12px;
-  border:2px solid rgba(255,255,255,.72);
+  width:100%;
+  min-height:46px;
+  padding:0 10px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.72);
   font-size:14px;
   font-weight:900;
   color:#fff;
   cursor:pointer;
-  text-shadow:0 1px 6px rgba(0,0,0,.35);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-shadow:0 1px 4px rgba(0,0,0,.18);
+  box-shadow:0 10px 18px rgba(56,103,149,.18);
+  touch-action:manipulation;
 }
 #${APP.id} .dk-btn:disabled{opacity:.45;cursor:not-allowed}
 #${APP.id} .dk-start{
-  background:linear-gradient(180deg, rgba(42,215,124,.96), rgba(19,170,94,.96));
-  border-color:rgba(219,255,232,.95);
-  box-shadow:0 10px 22px rgba(19,170,94,.34), inset 0 1px 0 rgba(255,255,255,.34);
+  background:linear-gradient(180deg, rgba(84,166,255,.96), rgba(52,130,231,.96));
 }
 #${APP.id} .dk-stop{
-  background:linear-gradient(180deg, rgba(255,96,96,.97), rgba(222,44,44,.97));
-  border-color:rgba(255,230,230,.95);
-  box-shadow:0 10px 22px rgba(222,44,44,.36), inset 0 1px 0 rgba(255,255,255,.28);
+  background:linear-gradient(180deg, rgba(126,159,194,.96), rgba(92,124,166,.96));
 }
 #${APP.id} .dk-status{
   grid-column:1 / -1;
-  min-height:44px;
+  min-height:48px;
   padding:8px 10px;
-  border-radius:12px;
-  border:1px solid rgba(15,23,42,.12);
-  background:rgba(255,255,255,.82);
-  color:#111827;
+  border-radius:14px;
+  border:1px solid rgba(156,186,227,.58);
+  background:rgba(255,255,255,.56);
+  color:#143d69;
   font-size:11px;
   line-height:1.45;
-  text-shadow:none;
   white-space:pre-wrap;
   word-break:break-word;
-  box-shadow:0 4px 10px rgba(0,0,0,.08);
+  box-shadow:0 6px 14px rgba(45,91,153,.08);
 }
-#${APP.id} .dk-status[data-level="success"]{color:#0f8a5b}
-#${APP.id} .dk-status[data-level="warn"]{color:#9a6700}
+#${APP.id} .dk-status[data-level="success"]{color:#1c6a93}
+#${APP.id} .dk-status[data-level="warn"]{color:#916300}
 #${APP.id} .dk-status[data-level="error"]{color:#b42318}
-`;
+#${APP.id} .dk-bubble{
+  display:none;
+  width:100%;
+  height:100%;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:2px;
+  color:#124b7d;
+  font-weight:900;
+  letter-spacing:.06em;
+}
+#${APP.id} .dk-bubble-main{font-size:12px}
+#${APP.id} .dk-bubble-sub{font-size:9px; opacity:.72}
+#${APP.id}[data-collapsed="true"] .dk-shell{display:none}
+#${APP.id}[data-collapsed="true"] .dk-bubble{display:flex}
+    `;
     document.head.appendChild(style);
 
     const panel = document.createElement('div');
     panel.id = APP.id;
     panel.innerHTML = `
-<div class="dk-head" data-ui="drag">
-  <div class="dk-flow">
-    <span class="dk-word dk-word-patient">患者メモ</span>
-    <span class="dk-arrow">→</span>
-    <span class="dk-word dk-word-reception">受付メモ</span>
+<div class="dk-shell">
+  <div class="dk-head">
+    <div class="dk-title-wrap">
+      <div class="dk-title">${APP.title}</div>
+      <div class="dk-sub">PATIENT MEMO TO RECEPTION</div>
+    </div>
+    <button type="button" class="dk-mini" data-ui="collapse" title="小さくする">−</button>
   </div>
-  <div class="dk-tools">
-    <button type="button" class="dk-mini" data-ui="collapse" title="折りたたみ"></button>
+  <div class="dk-body">
+    <button type="button" class="dk-btn dk-start" data-ui="start">START</button>
+    <button type="button" class="dk-btn dk-stop" data-ui="stop">STOP</button>
+    <div class="dk-status" data-ui="status">待機中</div>
   </div>
 </div>
-<div class="dk-body">
-  <button type="button" class="dk-btn dk-start" data-ui="start">START</button>
-  <button type="button" class="dk-btn dk-stop" data-ui="stop">STOP</button>
-  <div class="dk-status" data-ui="status">待機中</div>
+<div class="dk-bubble" data-ui="bubble">
+  <div class="dk-bubble-main">${APP.shortLabel}</div>
+  <div class="dk-bubble-sub">P→R</div>
 </div>`;
     document.body.appendChild(panel);
 
-    const drag = panel.querySelector('[data-ui="drag"]');
     const collapse = panel.querySelector('[data-ui="collapse"]');
     const start = panel.querySelector('[data-ui="start"]');
     const stop = panel.querySelector('[data-ui="stop"]');
     const status = panel.querySelector('[data-ui="status"]');
+    const bubble = panel.querySelector('[data-ui="bubble"]');
 
     collapse.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -836,12 +882,17 @@
     });
     start.addEventListener('click', () => { startTransfer(); });
     stop.addEventListener('click', () => { stopTransfer(); });
+    bubble.addEventListener('click', () => {
+      if (Date.now() < state.ignorePanelClickUntil) return;
+      if (panel.dataset.collapsed !== 'true') return;
+      toggleCollapse();
+    });
 
     restorePanel(panel);
-    enableDrag(panel, drag);
+    enableDrag(panel);
     bindResize(panel);
 
-    state.ui = { panel, collapse, start, stop, status };
+    state.ui = { panel, collapse, start, stop, status, bubble };
     updateUi();
   }
 
@@ -849,7 +900,7 @@
     createPanel();
     setStatus('START 待機中', 'info');
     updateUi();
-    log('loaded');
+    log('v2.1.0 loaded');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });

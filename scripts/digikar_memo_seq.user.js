@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DigiKar 受付メモ 連番ツール（下から順・2x2透明UI）
 // @namespace    https://digikar.jp/
-// @version      1.2.4
+// @version      1.3.0
 // @description  受付一覧の受付メモに連番付与/削除（仮想スクロール対応、午前/午後、下から順、table内インライン編集対応、2x2透明UI）
 // @match        https://digikar.jp/reception*
 // @match        https://digikar.jp/reception/*
@@ -17,6 +17,7 @@
   const APP = {
     id: 'dk-memo-seq-panel',
     title: '受付メモ連番',
+    shortLabel: '連番',
     logPrefix: '[DigiKarMemoSeq]',
     storageKey: 'dk-memo-seq-panel-state-v2',
   };
@@ -72,6 +73,7 @@
     abortRequested: false,
     lastRowLabel: '',
     ui: null,
+    ignorePanelClickUntil: 0,
   };
 
   const log = (...args) => console.log(APP.logPrefix, ...args);
@@ -688,8 +690,8 @@
 
   function setPanelMinimized(panel, closeBtn, minimized) {
     panel.classList.toggle('is-minimized', minimized);
-    closeBtn.textContent = minimized ? '+' : '-';
-    closeBtn.title = minimized ? 'open' : 'minimize';
+    closeBtn.textContent = '−';
+    closeBtn.title = minimized ? '開く' : '小さくする';
     closeBtn.setAttribute('aria-label', closeBtn.title);
   }
 
@@ -699,127 +701,151 @@
     const style = document.createElement('style');
     style.textContent = `
 #${APP.id}{
-  position:fixed; right:12px; bottom:12px;
-  width:214px;
-  background: rgba(255,255,255,0.01);
-  border-radius:14px;
-  border: 1px solid rgba(0,0,0,.22);
-  box-shadow:
-    0 12px 26px rgba(0,0,0,.28),
-    inset 0 1px 0 rgba(255,255,255,.35),
-    inset 0 -1px 0 rgba(0,0,0,.20);
+  position:fixed;
+  right:12px;
+  bottom:12px;
+  width:224px;
+  padding:10px;
+  background:rgba(219,233,255,.78);
+  border-radius:22px;
+  border:1px solid rgba(125,163,214,.78);
+  box-shadow:0 14px 34px rgba(34,76,135,.22);
+  backdrop-filter:blur(16px);
   z-index:2147483000;
   font-family:"Yu Gothic UI","Meiryo",sans-serif;
-  color:#263238;
-  overflow:hidden;
+  color:#143d69;
+  user-select:none;
+  box-sizing:border-box;
 }
+#${APP.id}, #${APP.id} *{box-sizing:border-box}
 #${APP.id}.is-minimized{
-  width:58px;
-  height:58px;
+  width:68px;
+  height:68px;
+  padding:0;
   border-radius:999px;
+  background:rgba(199,221,255,.42);
+  border-color:rgba(120,162,219,.8);
+  box-shadow:0 12px 28px rgba(47,93,158,.22);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#${APP.id}.is-minimized::before{
+  content:"";
+  position:absolute;
+  inset:4px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.56);
+  pointer-events:none;
+}
+#${APP.id} .dk-shell{
+  display:grid;
+  gap:10px;
 }
 #${APP.id} .dk-header{
   position:relative;
   z-index:3;
-  display:flex; align-items:center;
-  min-height:30px;
-  padding:8px 46px 2px 10px;
-  background: rgba(255,255,255,0.01);
-  cursor:grab;
-}
-#${APP.id}.is-minimized .dk-header{
-  min-height:58px;
-  padding:0;
-  justify-content:center;
-  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:42px;
 }
 #${APP.id} .dk-title{
-  font-size:12px; font-weight:900;
-  color:#0b6b3a;
-  text-shadow: 0 1px 0 rgba(255,255,255,.45);
-}
-#${APP.id}.is-minimized .dk-title{
-  display:none;
+  flex:1;
+  min-width:0;
+  padding:8px 12px;
+  border-radius:16px;
+  background:rgba(255,255,255,.56);
+  border:1px solid rgba(156,186,227,.58);
+  font-size:13px;
+  font-weight:900;
+  color:#124b7d;
+  letter-spacing:.04em;
 }
 #${APP.id} .dk-close{
-  position:absolute;
-  top:7px;
-  right:8px;
-  z-index:4;
-  width:30px;height:30px;
+  width:36px;
+  height:36px;
   display:flex;
   align-items:center;
   justify-content:center;
-  border-radius:999px;
-  background: rgba(255,255,255,0);
-  border: 1px solid rgba(0,0,0,.22);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
+  border-radius:14px;
+  background:rgba(255,255,255,.66);
+  border:1px solid rgba(142,178,222,.8);
+  box-shadow:0 6px 14px rgba(45,91,153,.14);
   cursor:pointer;
-  font-size:18px;
+  font-size:20px;
   font-weight:900;
   line-height:1;
-  color:#263238;
+  color:#386795;
 }
 #${APP.id}.is-minimized .dk-close{
-  position:static;
-  width:42px;
-  height:42px;
-  font-size:24px;
-  box-shadow:
-    0 8px 18px rgba(0,0,0,.22),
-    inset 0 1px 0 rgba(255,255,255,.45);
+  display:none;
 }
 #${APP.id} .dk-body{
   position:relative;
   z-index:1;
-  padding:8px 10px 10px;
   display:grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns:1fr 1fr;
   gap:8px;
 }
 #${APP.id}.is-minimized .dk-body{
   display:none;
 }
 #${APP.id} .dk-btn{
-  height:48px;
-  border:none;
-  border-radius:12px;
+  width:100%;
+  min-height:46px;
+  padding:0 8px;
+  border:1px solid rgba(255,255,255,.72);
+  border-radius:14px;
   font-size:13px;
   font-weight:900;
   color:#fff;
   cursor:pointer;
-  box-shadow: 0 8px 18px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.22);
-  position:relative;
-  z-index:1;
   display:flex;
   align-items:center;
   justify-content:center;
+  box-shadow:0 10px 18px rgba(56,103,149,.18);
+  touch-action:manipulation;
 }
 #${APP.id} .dk-btn:disabled{opacity:.55; cursor:not-allowed}
-#${APP.id} .dk-green{background:#1f9d55}
-#${APP.id} .dk-red{background:#d64545}
+#${APP.id} .dk-green{background:linear-gradient(180deg, rgba(84,166,255,.96), rgba(52,130,231,.96))}
+#${APP.id} .dk-red{background:linear-gradient(180deg, rgba(126,159,194,.96), rgba(92,124,166,.96))}
 
 #${APP.id} .dk-status{
-  grid-column: 1 / -1;
-  margin-top:2px;
+  grid-column:1 / -1;
   padding:8px 10px;
   font-size:11px;
-  line-height:1.3;
-  border-radius:12px;
-  background: rgba(255,255,255,0);
-  border: 1px solid rgba(0,0,0,.18);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.30);
-  color:#263238;
-  text-shadow: 0 1px 0 rgba(255,255,255,.40);
+  line-height:1.4;
+  border-radius:14px;
+  background:rgba(255,255,255,.56);
+  border:1px solid rgba(156,186,227,.58);
+  box-shadow:0 6px 14px rgba(45,91,153,.08);
+  color:#143d69;
 }
 #${APP.id} .dk-status[data-level="error"]{
-  border-color: rgba(214,69,69,.55);
+  border-color:rgba(214,69,69,.55);
   color:#b71c1c;
 }
 #${APP.id} .dk-status[data-level="warn"]{
-  border-color: rgba(255,213,79,.7);
+  border-color:rgba(255,213,79,.7);
 }
-`;
+#${APP.id} .dk-bubble{
+  display:none;
+  width:100%;
+  height:100%;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:2px;
+  color:#124b7d;
+  font-weight:900;
+  letter-spacing:.06em;
+}
+#${APP.id} .dk-bubble-main{font-size:12px}
+#${APP.id} .dk-bubble-sub{font-size:9px; opacity:.72}
+#${APP.id}.is-minimized .dk-shell{display:none}
+#${APP.id}.is-minimized .dk-bubble{display:flex}
+    `;
     document.head.appendChild(style);
 
     const panel = document.createElement('div');
@@ -827,23 +853,29 @@
     const saved = loadPanelState();
 
     panel.innerHTML = `
-<div class="dk-header">
-  <div class="dk-title">${APP.title}</div>
-  <button class="dk-close" type="button" data-ui="close" title="閉じる">×</button>
+<div class="dk-shell">
+  <div class="dk-header">
+    <div class="dk-title">${APP.title}</div>
+    <button class="dk-close" type="button" data-ui="close" title="小さくする">−</button>
+  </div>
+  <div class="dk-body">
+    <button class="dk-btn dk-green" type="button" data-action="add-am">AM付番</button>
+    <button class="dk-btn dk-green" type="button" data-action="add-pm">PM付番</button>
+    <button class="dk-btn dk-red" type="button" data-action="remove-am">AM番削</button>
+    <button class="dk-btn dk-red" type="button" data-action="remove-pm">PM番削</button>
+    <div class="dk-status" data-level="info">準備完了</div>
+  </div>
 </div>
-<div class="dk-body">
-  <button class="dk-btn dk-green" type="button" data-action="add-am">AM付番</button>
-  <button class="dk-btn dk-green" type="button" data-action="add-pm">PM付番</button>
-  <button class="dk-btn dk-red" type="button" data-action="remove-am">AM番削</button>
-  <button class="dk-btn dk-red" type="button" data-action="remove-pm">PM番削</button>
-  <div class="dk-status" data-level="info">準備完了</div>
+<div class="dk-bubble" data-ui="bubble">
+  <div class="dk-bubble-main">${APP.shortLabel}</div>
+  <div class="dk-bubble-sub">SEQ</div>
 </div>`;
     document.body.appendChild(panel);
 
-    const header = panel.querySelector('.dk-header');
     const statusEl = panel.querySelector('.dk-status');
     const closeBtn = panel.querySelector('[data-ui="close"]');
-    state.ui = { panel, header, statusEl, closeBtn };
+    const bubble = panel.querySelector('[data-ui="bubble"]');
+    state.ui = { panel, statusEl, closeBtn, bubble };
     setPanelMinimized(panel, closeBtn, !!saved.minimized);
 
     closeBtn.addEventListener('click', (e) => {
@@ -855,9 +887,9 @@
       savePanelState({ minimized: nextMinimized });
     });
 
-    header.addEventListener('click', (e) => {
+    bubble.addEventListener('click', (e) => {
       if (!panel.classList.contains('is-minimized')) return;
-      if (e.target.closest('button')) return;
+      if (Date.now() < state.ignorePanelClickUntil) return;
       setPanelMinimized(panel, closeBtn, false);
       clampPanelToViewport(panel);
       savePanelState({ minimized: false });
@@ -875,12 +907,13 @@
     });
 
     // drag（パネル全体からドラッグ可能、ボタン・ステータス以外）
-    let dragging = false, dx = 0, dy = 0;
+    let dragging = false, dx = 0, dy = 0, moved = false;
     panel.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
-      if (e.target.closest('button, .dk-status')) return;
+      if (e.target.closest('button')) return;
       const r = panel.getBoundingClientRect();
       dragging = true;
+      moved = false;
       dx = e.clientX - r.left;
       dy = e.clientY - r.top;
       panel.style.left = `${r.left}px`;
@@ -891,6 +924,7 @@
     });
     document.addEventListener('mousemove', (e) => {
       if (!dragging || !document.body.contains(panel)) return;
+      if (Math.abs(e.movementX) > 0 || Math.abs(e.movementY) > 0) moved = true;
       panel.style.left = `${e.clientX - dx}px`;
       panel.style.top = `${e.clientY - dy}px`;
       panel.style.right = 'auto';
@@ -903,6 +937,7 @@
       clampPanelToViewport(panel);
       const r = panel.getBoundingClientRect();
       savePanelState({ left: r.left, top: r.top });
+      if (moved) state.ignorePanelClickUntil = Date.now() + 250;
     });
 
     if (typeof saved.left === 'number' && typeof saved.top === 'number') {
@@ -919,7 +954,7 @@
   function boot() {
     createPanel();
     setStatus('準備完了', 'info');
-    log('v1.2.3 loaded');
+    log('v1.3.0 loaded');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
