@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      3.1.1
+// @version      3.2.0
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -42,6 +42,13 @@
 
     // カルテ更新モーダル（Phase 2 用）
     editPencilBtn: '.edit-btn, [class*="edit"], button[title*="編集"], button[aria-label*="編集"], button[title*="edit"], button[aria-label*="edit"]',
+    chartUpdateEntryEditButton: '#root > div > div.css-uaysch > div.css-9vboi8 > div.css-116vn3d > div.css-16bq4yl > div.css-ztkqqy > div.css-rr4en0 > span > button',
+    chartPublic1SelectExact: 'select.css-1poodrh',
+    chartTempSaveButton: '#root > div > div.css-uaysch > div.css-eougxq > div.css-173zpu7 > div > span:nth-child(5) > button',
+    chartListInsuranceCell: '#root > div > div > div > div > div.css-15mudl3 > table > tbody > tr:nth-child(1) > td:nth-child(7)',
+    chartListInsuranceEditButton: 'button.edit-icon',
+    editIconPath: 'path[d="M19.575 9.326 15.2 4.976 16.45 3.7a2.32 2.32 0 0 1 1.638-.7c.641-.017 1.22.216 1.737.7l1.05 1.025c.517.483.758 1.042.725 1.675a2.404 2.404 0 0 1-.725 1.625zm-1.425 1.45L7.4 21.526H3V17.15L13.75 6.4z"]',
+    saveIconPath: 'path[d="M17 3H3v18h18V7zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3m3-10H5V5h10z"]',
     kouhi1Select: 'select[name*="kouhi1"], select[name*="public1"]',
     kouhi2Select: 'select[name*="kouhi2"], select[name*="public2"]',
   };
@@ -467,6 +474,17 @@
     return el.offsetParent !== null && style.display !== "none" && style.visibility !== "hidden";
   }
 
+  function queryVisible(selector, scope = document) {
+    if (!selector || !scope?.querySelectorAll) return null;
+    return Array.from(scope.querySelectorAll(selector)).find(isVisible) || null;
+  }
+
+  function findButtonBySvgSelector(svgSelector, scope = document) {
+    if (!svgSelector || !scope?.querySelectorAll) return null;
+    const path = queryVisible(svgSelector, scope);
+    return path?.closest("button, a, [role='button']") || null;
+  }
+
   function findVisibleTextElements(text, scope = document.body) {
     const hits = [];
     const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
@@ -666,6 +684,13 @@
     return ranked[0]?.[0] || null;
   }
 
+  function findDirectChartUpdateEditButton() {
+    return (
+      queryVisible(SELECTORS.chartUpdateEntryEditButton) ||
+      findButtonBySvgSelector(SELECTORS.editIconPath)
+    );
+  }
+
   function findTemporaryJiritsuOption(select) {
     if (!select) return null;
     for (const opt of select.options) {
@@ -693,6 +718,55 @@
     }
 
     return null;
+  }
+
+  async function clickChartTemporarySaveButton() {
+    const saveBtn = await waitForElement(
+      () => queryVisible(SELECTORS.chartTempSaveButton) || findButtonBySvgSelector(SELECTORS.saveIconPath),
+      8000,
+      300
+    ).catch(() => null);
+
+    if (!saveBtn) throw new Error("一時保存ボタンが見つかりません");
+
+    safeClick(saveBtn);
+    log("一時保存ボタンをクリック");
+    await sleep(1500);
+  }
+
+  function findInsuranceCellInChartList() {
+    const directCell = queryVisible(SELECTORS.chartListInsuranceCell);
+    if (directCell) return directCell;
+
+    const directEditBtn = queryVisible(SELECTORS.chartListInsuranceEditButton);
+    if (directEditBtn) return directEditBtn.closest("td");
+
+    const cells = Array.from(document.querySelectorAll("td")).filter(isVisible);
+    for (const cell of cells) {
+      if (!cell.querySelector(SELECTORS.chartListInsuranceEditButton)) continue;
+      const text = cell.textContent.trim();
+      if (text.includes("国保") || text.includes("保険")) return cell;
+    }
+
+    return null;
+  }
+
+  async function clickInsuranceCellInChartList() {
+    const cell = await waitForElement(() => findInsuranceCellInChartList(), 8000, 300).catch(() => null);
+    if (!cell) throw new Error("カルテ一覧の保険セルが見つかりません");
+
+    safeClick(cell);
+    log("カルテ一覧の保険セルをクリック");
+    await sleep(1200);
+
+    if (!findModalByTitle("予約編集")) {
+      const editBtn = cell.querySelector(SELECTORS.chartListInsuranceEditButton);
+      if (editBtn) {
+        safeClick(editBtn);
+        log("保険セル内の編集アイコンもクリック");
+        await sleep(1200);
+      }
+    }
   }
 
   let confirmHookActive = false;
@@ -1474,6 +1548,10 @@
   async function openChartUpdateModal() {
     await closePublicExpenseHistoryModalIfPresent();
 
+    const directEditBtn = findDirectChartUpdateEditButton();
+    const directEditModal = await tryOpenChartUpdateFromButton(directEditBtn, "direct chart edit button");
+    if (directEditModal) return directEditModal;
+
     // Method 0: prefer the edit button on the newly added 21000000 row.
     const publicRowEditBtn = await waitForElement(
       () => findPublicExpenseRowEditButton(TEMP_FUTANSHA),
@@ -1627,8 +1705,9 @@
 
     // 公費1の select を見つけて 21000000 のオプションを選択する
     // 画面構造: ラベル "1" → select（公費1）、ラベル "2" → select（公費2）、...
-    const directKouhi1 = Array.from(modal.querySelectorAll(SELECTORS.kouhi1Select)).find(
-      (sel) => findTemporaryJiritsuOption(sel)
+    const directKouhi1 = (
+      queryVisible(SELECTORS.chartPublic1SelectExact, modal) ||
+      Array.from(modal.querySelectorAll(SELECTORS.kouhi1Select)).find((sel) => findTemporaryJiritsuOption(sel))
     );
     if (directKouhi1) {
       const targetOpt = findTemporaryJiritsuOption(directKouhi1);
@@ -1869,8 +1948,14 @@
         step = "カルテ更新の確定";
         await submitChartUpdate();
 
+        step = "カルテを一時保存";
+        await clickChartTemporarySaveButton();
+
+        step = "カルテ一覧の保険セルを開く";
+        await clickInsuranceCellInChartList();
+
         log("===== Phase 2（カルテ更新）完了 =====");
-        showToast("カルテ更新も完了しました！", "success");
+        showToast("保険セルを開くところまで完了しました！", "success");
       } catch (err2) {
         warn(`Phase 2 エラー [${step}]: ${err2.message}`);
         showToast(`公費追加は完了。カルテ更新は手動で行ってください: ${err2.message}`, "warn");
@@ -1968,7 +2053,7 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v3.0.0 初期化");
+    log("v3.2.0 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
     setTimeout(() => { ensureButton(); startObserver(); }, 2000);
   }
