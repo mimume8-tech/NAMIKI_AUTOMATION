@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      3.0.0
+// @version      3.1.0
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -40,8 +40,8 @@
     kouhiTypeSelect: 'select[name*="kouhi"], select[name*="publicType"], select[name*="type"]',
     jukyushaInput: 'input[name*="jukyusha"], input[name*="recipient"]',
 
-    // カルテ更新モーダル（Phase 2 用、今回は未使用）
-    editPencilBtn: '.edit-btn, button[title*="編集"]',
+    // カルテ更新モーダル（Phase 2 用）
+    editPencilBtn: '.edit-btn, [class*="edit"], button[title*="編集"], button[aria-label*="編集"], button[title*="edit"], button[aria-label*="edit"]',
     kouhi1Select: 'select[name*="kouhi1"], select[name*="public1"]',
     kouhi2Select: 'select[name*="kouhi2"], select[name*="public2"]',
   };
@@ -461,6 +461,164 @@
   // window.confirm 自動承認フック
   // チェックデジット警告「登録してよろしいですか」に対応
   // ══════════════════════════════════════════════════════════════
+  function isVisible(el) {
+    if (!el) return false;
+    const style = getComputedStyle(el);
+    return el.offsetParent !== null && style.display !== "none" && style.visibility !== "hidden";
+  }
+
+  function findVisibleTextElements(text, scope = document.body) {
+    const hits = [];
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!node.textContent.trim().includes(text)) continue;
+      const el = node.parentElement;
+      if (!isVisible(el)) continue;
+      if (el.closest('[class*="modal"], [class*="Modal"], [role="dialog"]')) continue;
+      hits.push(el);
+    }
+    return hits;
+  }
+
+  function getVisibleActionButtons(scope) {
+    if (!scope) return [];
+    return Array.from(scope.querySelectorAll("button, a, [role='button']")).filter(
+      (btn) => isVisible(btn) && !btn.closest('[class*="modal"], [class*="Modal"], [role="dialog"]')
+    );
+  }
+
+  function isLikelyEditButton(btn) {
+    if (!btn) return false;
+
+    try {
+      if (btn.matches(SELECTORS.editPencilBtn)) return true;
+    } catch (e) {
+      debug("edit selector match failed", e);
+    }
+
+    const meta = [
+      btn.getAttribute("title"),
+      btn.getAttribute("aria-label"),
+      btn.className?.toString?.(),
+      btn.textContent,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    if (meta.includes("編集") || meta.includes("edit") || meta.includes("pencil")) return true;
+
+    const svgPath = Array.from(btn.querySelectorAll("path"))
+      .map((path) => path.getAttribute("d") || "")
+      .join(" ");
+    return svgPath.includes("17.25") && svgPath.includes("3.75");
+  }
+
+  function closeUnexpectedModalIfNeeded() {
+    const anyModal = document.querySelector('[class*="modal"], [role="dialog"]');
+    if (!anyModal) return false;
+
+    const closeBtn =
+      anyModal.querySelector('[aria-label="close"], [class*="close"]') ||
+      findButtonByText("×", anyModal) ||
+      findButtonByText("✕", anyModal) ||
+      findButtonByText("閉じる", anyModal) ||
+      findButtonByText("キャンセル", anyModal);
+
+    if (!closeBtn) return false;
+    safeClick(closeBtn);
+    return true;
+  }
+
+  async function tryOpenChartUpdateFromButton(btn, reason) {
+    if (!btn) return null;
+
+    safeClick(btn);
+    log(`${reason} をクリック`);
+    await sleep(1500);
+
+    const modal = findModalByTitle("カルテ更新");
+    if (modal) {
+      log(`カルテ更新モーダルが開きました（${reason}）`);
+      await sleep(500);
+      return modal;
+    }
+
+    if (closeUnexpectedModalIfNeeded()) {
+      await sleep(500);
+    }
+
+    return null;
+  }
+
+  function findPublicExpenseRowEditButton(publicExpenseNumber = TEMP_FUTANSHA) {
+    const scores = new Map();
+    const hitElements = findVisibleTextElements(publicExpenseNumber);
+
+    for (const hitEl of hitElements) {
+      let container = hitEl;
+      for (let depth = 0; depth < 6 && container; depth++) {
+        const text = container.textContent || "";
+        if (text.includes(publicExpenseNumber)) {
+          const buttons = getVisibleActionButtons(container).filter((btn) => btn.querySelector("svg"));
+          if (buttons.length > 0) {
+            const textPenalty = Math.min(text.trim().length, 160) / 4;
+            buttons.forEach((btn, index) => {
+              let score = 240 - depth * 20 - textPenalty;
+              if (isLikelyEditButton(btn)) score += 120;
+              if (index === buttons.length - 1) score += 30;
+              if (buttons.length === 2) score += 15;
+              const prev = scores.get(btn) ?? Number.NEGATIVE_INFINITY;
+              if (score > prev) scores.set(btn, score);
+            });
+          }
+        }
+        container = container.parentElement;
+      }
+    }
+
+    const ranked = Array.from(scores.entries()).sort((a, b) => b[1] - a[1]);
+    if (DEBUG && ranked.length > 0) {
+      debug(
+        "findPublicExpenseRowEditButton ranked:",
+        ranked.slice(0, 5).map(([btn, score]) => ({
+          score,
+          html: btn.outerHTML.substring(0, 120),
+        }))
+      );
+    }
+    return ranked[0]?.[0] || null;
+  }
+
+  function findTemporaryJiritsuOption(select) {
+    if (!select) return null;
+    for (const opt of select.options) {
+      const text = opt.textContent || "";
+      if (text.includes(TEMP_FUTANSHA) || text.includes(KOUHI_TYPE_TEXT)) {
+        return opt;
+      }
+    }
+    return null;
+  }
+
+  function findNumberedSelect(scope, rowNumber) {
+    if (!scope) return null;
+
+    for (const sel of scope.querySelectorAll("select")) {
+      const row = sel.closest("tr, [class*='row'], [class*='Row'], [class*='field'], [class*='Field']");
+      if (row) {
+        const children = Array.from(row.children);
+        const hasRowLabel = children.some((child) => child.textContent.trim() === rowNumber);
+        if (hasRowLabel) return sel;
+      }
+
+      const prev = sel.previousElementSibling || sel.parentElement?.previousElementSibling;
+      if (prev?.textContent.trim() === rowNumber) return sel;
+    }
+
+    return null;
+  }
+
   let confirmHookActive = false;
   const originalConfirm = window.confirm;
 
@@ -1238,6 +1396,17 @@
    *       順番にクリックし、カルテ更新モーダルが開くものを探す
    */
   async function openChartUpdateModal() {
+    // Method 0: prefer the edit button on the newly added 21000000 row.
+    const publicRowEditBtn = await waitForElement(
+      () => findPublicExpenseRowEditButton(TEMP_FUTANSHA),
+      6000,
+      400
+    ).catch(() => null);
+    const publicRowModal = await tryOpenChartUpdateFromButton(
+      publicRowEditBtn,
+      `public expense row ${TEMP_FUTANSHA} edit button`
+    );
+    if (publicRowModal) return publicRowModal;
     log("STEP: カルテ更新モーダルを開く（Phase 2）");
 
     // === 方法1: 「編集」テキストを含むクリック可能な要素を探す ===
@@ -1380,6 +1549,38 @@
 
     // 公費1の select を見つけて 21000000 のオプションを選択する
     // 画面構造: ラベル "1" → select（公費1）、ラベル "2" → select（公費2）、...
+    const directKouhi1 = Array.from(modal.querySelectorAll(SELECTORS.kouhi1Select)).find(
+      (sel) => findTemporaryJiritsuOption(sel)
+    );
+    if (directKouhi1) {
+      const targetOpt = findTemporaryJiritsuOption(directKouhi1);
+      if (targetOpt) {
+        if (directKouhi1.value !== targetOpt.value) {
+          setSelectValue(directKouhi1, targetOpt.value);
+          log(`公費1(selector) → "${targetOpt.textContent.trim().substring(0, 50)}" を選択`);
+        } else {
+          log(`公費1(selector): 既に "${targetOpt.textContent.trim().substring(0, 50)}" が選択済み ✓`);
+        }
+        await sleep(300);
+        return;
+      }
+    }
+
+    const row1Select = findNumberedSelect(modal, "1");
+    if (row1Select) {
+      const targetOpt = findTemporaryJiritsuOption(row1Select);
+      if (targetOpt) {
+        if (row1Select.value !== targetOpt.value) {
+          setSelectValue(row1Select, targetOpt.value);
+          log(`公費1(row1) → "${targetOpt.textContent.trim().substring(0, 50)}" を選択`);
+        } else {
+          log(`公費1(row1): 既に "${targetOpt.textContent.trim().substring(0, 50)}" が選択済み ✓`);
+        }
+        await sleep(300);
+        return;
+      }
+    }
+
     let kouhi1 = null;
 
     for (const sel of selects) {
