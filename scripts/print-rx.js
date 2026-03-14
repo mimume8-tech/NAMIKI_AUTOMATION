@@ -210,6 +210,7 @@ function startChromeProcess() {
       "--no-first-run",
       "--new-window",
       "--kiosk-printing",
+      "--auto-ssl-client-auth",
       "--show-bookmark-bar",
       `--user-data-dir=${DIGIKAR_USER_DATA}`,
       `--profile-directory=${DIGIKAR_PROFILE_DIRECTORY}`,

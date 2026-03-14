@@ -14,21 +14,19 @@ try {
     New-Item -Path $policyPath -Force | Out-Null
   }
   Set-ItemProperty -Path $policyPath -Name "1" -Value $policyValue -Type String -Force
-  # 成功した場合は終了（次回Chrome起動時からダイアログが出なくなる）
-  exit 0
+  # 次回Chrome起動時からダイアログが出なくなるが、
+  # 現在のセッションではダイアログが出る可能性があるため続行する
 } catch {
   # HKLM に書けない場合は HKCU を試す
-}
-
-$policyPathCU = "HKCU:\SOFTWARE\Policies\Google\Chrome\AutoSelectCertificateForUrls"
-try {
-  if (-not (Test-Path $policyPathCU)) {
-    New-Item -Path $policyPathCU -Force | Out-Null
+  $policyPathCU = "HKCU:\SOFTWARE\Policies\Google\Chrome\AutoSelectCertificateForUrls"
+  try {
+    if (-not (Test-Path $policyPathCU)) {
+      New-Item -Path $policyPathCU -Force | Out-Null
+    }
+    Set-ItemProperty -Path $policyPathCU -Name "1" -Value $policyValue -Type String -Force
+  } catch {
+    # レジストリ設定に失敗 — ウィンドウ操作のみで対処
   }
-  Set-ItemProperty -Path $policyPathCU -Name "1" -Value $policyValue -Type String -Force
-  exit 0
-} catch {
-  # レジストリ設定に失敗した場合はウィンドウ操作にフォールバック
 }
 
 # ── 方法2: フォールバック — ウィンドウ検索 + SendKeys ──
