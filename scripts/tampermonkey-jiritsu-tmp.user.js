@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      3.5.0
+// @version      3.5.1
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -15,8 +15,13 @@
 
   // ══════════════════════════════════════════════════════════════
   // デバッグモード（true にすると詳細ログが出る）
+  // 通常ログだけ見たい場合は localStorage.setItem("jiritsu_tmp_log", "1")
   // ══════════════════════════════════════════════════════════════
-  const DEBUG = true;
+  const DEBUG = false;
+  const INFO_LOG = DEBUG || window.localStorage.getItem("jiritsu_tmp_log") === "1";
+  const DEFAULT_WAIT_INTERVAL = 60;
+  const ENSURE_BUTTON_DEBOUNCE_MS = 120;
+  const URL_WATCH_INTERVAL_MS = 1500;
 
   // ══════════════════════════════════════════════════════════════
   // 業務定数
@@ -57,7 +62,7 @@
   // ログユーティリティ
   // ══════════════════════════════════════════════════════════════
   const P = "[JIRITSU_TMP]";
-  const log   = (...a) => console.log(P, ...a);
+  const log   = (...a) => { if (INFO_LOG) console.log(P, ...a); };
   const debug = (...a) => { if (DEBUG) console.log(P, "[DEBUG]", ...a); };
   const warn  = (...a) => console.warn(P, ...a);
   const error = (...a) => console.error(P, ...a);
@@ -87,29 +92,56 @@
   // ══════════════════════════════════════════════════════════════
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  function normalizeWaitOptions(intervalOrOptions) {
+    if (typeof intervalOrOptions === "number") {
+      return { interval: intervalOrOptions };
+    }
+    return intervalOrOptions || {};
+  }
+
   /** MutationObserver + polling ハイブリッド — DOM変化を即座に検知 */
-  function waitForElement(finder, timeout = 6000, interval = 30) {
+  function waitForElement(finder, timeout = 6000, intervalOrOptions = DEFAULT_WAIT_INTERVAL) {
     return new Promise((resolve, reject) => {
+      const {
+        interval = DEFAULT_WAIT_INTERVAL,
+        root = document.body,
+        observeAttributes = false,
+      } = normalizeWaitOptions(intervalOrOptions);
       const el = finder();
       if (el) return resolve(el);
       let done = false;
       const cleanup = () => { done = true; observer.disconnect(); clearTimeout(timer); clearInterval(poller); };
       const found = () => { const el = finder(); if (el && !done) { cleanup(); resolve(el); return true; } return false; };
       const observer = new MutationObserver(() => found());
-      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+      observer.observe(root, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: observeAttributes,
+      });
       const poller = setInterval(() => found(), interval);
       const timer = setTimeout(() => { if (!done) { cleanup(); reject(new Error(`waitForElement timeout (${timeout}ms)`)); } }, timeout);
     });
   }
 
-  function waitForCondition(fn, timeout = 6000, interval = 30) {
+  function waitForCondition(fn, timeout = 6000, intervalOrOptions = DEFAULT_WAIT_INTERVAL) {
     return new Promise((resolve, reject) => {
+      const {
+        interval = DEFAULT_WAIT_INTERVAL,
+        root = document.body,
+        observeAttributes = false,
+      } = normalizeWaitOptions(intervalOrOptions);
       if (fn()) return resolve(true);
       let done = false;
       const cleanup = () => { done = true; observer.disconnect(); clearTimeout(timer); clearInterval(poller); };
       const check = () => { if (fn() && !done) { cleanup(); resolve(true); return true; } return false; };
       const observer = new MutationObserver(() => check());
-      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+      observer.observe(root, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: observeAttributes,
+      });
       const poller = setInterval(() => check(), interval);
       const timer = setTimeout(() => { if (!done) { cleanup(); reject(new Error(`waitForCondition timeout (${timeout}ms)`)); } }, timeout);
     });
@@ -1115,7 +1147,7 @@
 
       if (navBtn) {
         safeClick(navBtn);
-        await sleep(100);
+        await sleep(50);
       } else {
         debug(`  ${label}: カレンダーのナビゲーションボタンが見つかりません`);
         return false;
@@ -1123,7 +1155,6 @@
     }
 
     // ── 日付を選択 ──
-    await sleep(200);
     const dayStr = String(dateObj.day);
     // カレンダー内の日付セルを探す
     const dayCells = calendar.querySelectorAll(
@@ -1138,7 +1169,6 @@
         if (cls.match(/disabled|outside|other|prev|next/i)) continue;
         safeClick(cell);
         debug(`  ${label}: カレンダーで ${dayStr} 日を選択`);
-        await sleep(300);
         return true;
       }
     }
@@ -1269,6 +1299,25 @@
       }
     }
     return false;
+  }
+
+  async function waitForPhase2Ready() {
+    log("Phase 2 準備: 公費一覧の反映待ち...");
+    try {
+      await waitForCondition(() => !!findTextElement(TEMP_FUTANSHA), 1500);
+      log(`公費一覧に ${TEMP_FUTANSHA} を検出 ✓`);
+    } catch (_) {
+      debug("公費一覧の反映待ちがタイムアウト、継続");
+    }
+  }
+
+  async function waitForBurdenRows(modal) {
+    try {
+      await waitForCondition(
+        () => !!findTextElement("1回あたり", modal) || !!findTextElement("1月あたり", modal),
+        1000
+      );
+    } catch (_) {}
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -1423,8 +1472,6 @@
       // モーダル内の全チェックボックスを出力
       debug("  モーダル内 checkbox一覧:", modal.querySelectorAll('input[type="checkbox"]'));
     }
-    await sleep(50);
-
     // ────────────────────────────
     // F. 有効期間（開始日・終了日）
     //    二段構え: 直接入力優先 → カレンダーUI fallback
@@ -1467,8 +1514,6 @@
         `type=${i.type}, name=${i.name}, placeholder=${i.placeholder}, value="${i.value}"`
       ));
     }
-    await sleep(300);
-
     // ────────────────────────────
     // G/H. 患者自己負担
     // ────────────────────────────
@@ -1508,7 +1553,7 @@
       }
 
       // 負担あり選択後、テーブルが表示/活性化されるのを待つ
-      await sleep(300);
+      await waitForBurdenRows(modal);
 
       // G-1: 1回あたり 上限 10%
       log("  G: 1回あたり 上限 10% を入力");
@@ -1530,8 +1575,6 @@
       } else {
         warn("  G: 「1回あたり」テキストが見つかりません");
       }
-      await sleep(50);
-
       // G-2: 1月あたり 上限 20000円
       log("  G: 1月あたり 上限 20000円 を入力");
       const row1month = findTextElement("1月あたり", modal);
@@ -1587,7 +1630,6 @@
       }
     }
 
-    await sleep(100);
     log("フォーム入力完了");
   }
 
@@ -1773,7 +1815,6 @@
         } else {
           log(`公費1(selector): 既に "${targetOpt.textContent.trim().substring(0, 50)}" が選択済み ✓`);
         }
-        await sleep(100);
         return;
       }
     }
@@ -1788,7 +1829,6 @@
         } else {
           log(`公費1(row1): 既に "${targetOpt.textContent.trim().substring(0, 50)}" が選択済み ✓`);
         }
-        await sleep(100);
         return;
       }
     }
@@ -1867,7 +1907,6 @@
       warn("公費1の設定に失敗。手動で設定してください。");
       showToast("公費1を手動で選択してください", "warn");
     }
-    await sleep(100);
   }
 
   async function selectLifeProtectionToPublic2IfNeeded(isLifeProtection) {
@@ -1985,8 +2024,7 @@
       showToast("公費追加が完了しました！", "success");
 
       // Phase 1 完了後、ページ更新を待つ（DOM再描画 + 公費一覧反映）
-      log("Phase 2 準備: ページ更新を待機...");
-      await sleep(800);
+      await waitForPhase2Ready();
 
       // Phase 2: カルテ更新（失敗しても Phase 1 は有効）
       try {
@@ -2037,6 +2075,9 @@
   // ボタン挿入（公費セクション横のインラインボタンのみ）
   // ══════════════════════════════════════════════════════════════
   const BTN_ID = "jiritsu-tmp-btn";
+  let ensureButtonTimer = 0;
+  let observerStarted = false;
+  let lastLocationHref = location.href;
 
   /**
    * 公費セクションヘッダー（「公費 ☑現在有効 ＋」の行）を特定する
@@ -2093,6 +2134,14 @@
     log("「自立仮番」ボタンを追加（公費セクション横）");
   }
 
+  function scheduleEnsureButton(delay = ENSURE_BUTTON_DEBOUNCE_MS) {
+    if (ensureButtonTimer) return;
+    ensureButtonTimer = window.setTimeout(() => {
+      ensureButtonTimer = 0;
+      ensureButton();
+    }, delay);
+  }
+
   function setButtonBusy(busy) {
     const btn = document.getElementById(BTN_ID);
     if (!btn) return;
@@ -2105,9 +2154,25 @@
   // SPA対応: MutationObserver + 定期監視
   // ══════════════════════════════════════════════════════════════
   function startObserver() {
-    setInterval(ensureButton, 5000);
-    new MutationObserver(() => {
-      if (!document.getElementById(BTN_ID)) ensureButton();
+    if (observerStarted) return;
+    observerStarted = true;
+
+    window.setInterval(() => {
+      const urlChanged = location.href !== lastLocationHref;
+      if (urlChanged) lastLocationHref = location.href;
+      if (urlChanged || !document.getElementById(BTN_ID)) {
+        scheduleEnsureButton(urlChanged ? 0 : ENSURE_BUTTON_DEBOUNCE_MS);
+      }
+    }, URL_WATCH_INTERVAL_MS);
+
+    new MutationObserver((mutations) => {
+      if (document.getElementById(BTN_ID)) return;
+      for (const mutation of mutations) {
+        if (mutation.addedNodes.length || mutation.removedNodes.length) {
+          scheduleEnsureButton();
+          return;
+        }
+      }
     }).observe(document.body, { childList: true, subtree: true });
     debug("監視開始");
   }
@@ -2116,9 +2181,9 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v3.4.0 初期化");
+    log("v3.5.0 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
-    setTimeout(() => { ensureButton(); startObserver(); }, 2000);
+    setTimeout(() => { ensureButton(); startObserver(); }, 1500);
   }
 
   if (document.readyState === "loading") {
