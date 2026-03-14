@@ -1304,7 +1304,7 @@
   async function waitForPhase2Ready() {
     log("Phase 2 準備: 公費一覧の反映待ち...");
     try {
-      await waitForCondition(() => !!findTextElement(TEMP_FUTANSHA), 800);
+      await waitForCondition(() => !!findTextElement(TEMP_FUTANSHA), 1500);
       log(`公費一覧に ${TEMP_FUTANSHA} を検出 ✓`);
     } catch (_) {
       debug("公費一覧の反映待ちがタイムアウト、継続");
@@ -1790,6 +1790,20 @@
     log("STEP: 公費1に自立仮番をセット");
     const modal = findModalByTitle("カルテ更新");
     if (!modal) throw new Error("カルテ更新モーダルが見つかりません");
+
+    // selectのoptionに21000000が現れるまで待つ（非同期で読み込まれる場合がある）
+    try {
+      await waitForCondition(() => {
+        const sels = modal.querySelectorAll("select");
+        for (const sel of sels) {
+          if (findTemporaryJiritsuOption(sel)) return true;
+        }
+        return false;
+      }, 3000, { root: modal, observeAttributes: true });
+      log("公費selectにオプションが読み込まれました ✓");
+    } catch (_) {
+      warn("公費selectに21000000オプションが見つかりません（タイムアウト）。現在のoptionで続行します。");
+    }
 
     const selects = modal.querySelectorAll("select");
     debug(`カルテ更新モーダル内の select: ${selects.length} 個`);
