@@ -18,6 +18,7 @@ const pdfParse = require("pdf-parse");
 const { PDFDocument } = require("pdf-lib");
 const { spawn } = require("child_process");
 const { startCertificateDialogHelper } = require("./certificate_dialog_helper");
+const { setupUserscriptInjection } = require("./userscript_injector");
 
 // ── PC別設定ファイル読み込み ─────────────────────
 const PC_CONFIG_PATH = path.join(__dirname, "..", "config", "pc-config.json");
@@ -162,6 +163,16 @@ async function mainLoop() {
 
     log("Chrome 接続OK");
 
+    // ユーザースクリプト自動注入（Tampermonkey 不要）
+    try {
+      const ctx = browser.contexts()[0];
+      if (ctx) {
+        await setupUserscriptInjection(ctx, { log });
+      }
+    } catch (err) {
+      log(`userscript注入セットアップ失敗: ${err.message}`);
+    }
+
     try {
       await watchLoop(browser);
     } catch (err) {
@@ -201,7 +212,7 @@ async function launchChrome() {
 }
 
 function startChromeProcess() {
-  startCertificateDialogHelper({ timeoutSeconds: 60, log });
+  startCertificateDialogHelper({ log });
   const child = spawn(
     CHROME_PATH,
     [
@@ -507,14 +518,18 @@ async function watchLoop(browser) {
       }
     }
 
+    // 全 digikar タブにパネルを注入
+    const allDigikarPages = getAllDigikarPages(context);
+    for (const dp of allDigikarPages) {
+      await ensurePrintModePanel(dp).catch(() => {});
+    }
+
     const kartePage = await getDigikarPage(context);
 
     if (!kartePage) {
       await sleep(POLL_INTERVAL_MS);
       continue;
     }
-
-    await ensurePrintModePanel(kartePage).catch(() => {});
 
     // 下書き一括保存フラグチェック
     const draftSaveRequested = await kartePage
@@ -583,6 +598,13 @@ async function watchLoop(browser) {
 
     await sleep(5_000);
   }
+}
+
+function getAllDigikarPages(context) {
+  const pages = context.pages();
+  return pages.filter(
+    (candidate) => candidate.url().includes("digikar.jp") && !candidate.url().includes("/pdf/")
+  );
 }
 
 async function getDigikarPage(context) {

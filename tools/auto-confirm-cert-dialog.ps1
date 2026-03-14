@@ -1,35 +1,11 @@
 param(
-  [int]$TimeoutSeconds = 45,
-  [int]$PollIntervalMs = 300
+  [int]$PollIntervalMs = 500
 )
 
-# ── 方法1: レジストリポリシーで証明書自動選択を設定 ──
-# AutoSelectCertificateForUrls は Chrome のポリシーであり、
-# コマンドラインフラグではないためレジストリで設定する必要がある
-$policyPath = "HKLM:\SOFTWARE\Policies\Google\Chrome\AutoSelectCertificateForUrls"
-$policyValue = '{"pattern":"https://digikar.jp","filter":{}}'
+# ── 常駐型: Chrome の証明書選択ダイアログを自動で OK する ──
+# print-rx.js のバックグラウンドプロセスとして動作し、
+# ダイアログが表示されるたびに自動クリックする。
 
-try {
-  if (-not (Test-Path $policyPath)) {
-    New-Item -Path $policyPath -Force | Out-Null
-  }
-  Set-ItemProperty -Path $policyPath -Name "1" -Value $policyValue -Type String -Force
-  # 次回Chrome起動時からダイアログが出なくなるが、
-  # 現在のセッションではダイアログが出る可能性があるため続行する
-} catch {
-  # HKLM に書けない場合は HKCU を試す
-  $policyPathCU = "HKCU:\SOFTWARE\Policies\Google\Chrome\AutoSelectCertificateForUrls"
-  try {
-    if (-not (Test-Path $policyPathCU)) {
-      New-Item -Path $policyPathCU -Force | Out-Null
-    }
-    Set-ItemProperty -Path $policyPathCU -Name "1" -Value $policyValue -Type String -Force
-  } catch {
-    # レジストリ設定に失敗 — ウィンドウ操作のみで対処
-  }
-}
-
-# ── 方法2: フォールバック — ウィンドウ検索 + SendKeys ──
 Add-Type @"
 using System;
 using System.Collections.Generic;
@@ -38,9 +14,13 @@ using System.Text;
 
 public static class NativeWindows {
   public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+  public delegate bool EnumChildProc(IntPtr hWnd, IntPtr lParam);
 
   [DllImport("user32.dll")]
   public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+  [DllImport("user32.dll")]
+  public static extern bool EnumChildWindows(IntPtr hWndParent, EnumChildProc lpEnumFunc, IntPtr lParam);
 
   [DllImport("user32.dll")]
   public static extern bool IsWindowVisible(IntPtr hWnd);
@@ -48,11 +28,20 @@ public static class NativeWindows {
   [DllImport("user32.dll", CharSet = CharSet.Unicode)]
   public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+  public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
   [DllImport("user32.dll")]
   public static extern bool SetForegroundWindow(IntPtr hWnd);
 
   [DllImport("user32.dll")]
   public static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string lpszClass, string lpszWindow);
+
+  [DllImport("user32.dll", CharSet = CharSet.Auto)]
+  public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+  public const uint BM_CLICK = 0x00F5;
+  public const uint WM_CLOSE = 0x0010;
 
   public static List<IntPtr> GetVisibleWindows() {
     var windows = new List<IntPtr>();
@@ -70,9 +59,25 @@ public static class NativeWindows {
     GetWindowText(hWnd, sb, sb.Capacity);
     return sb.ToString().Trim();
   }
+
+  public static string GetClass(IntPtr hWnd) {
+    var sb = new StringBuilder(256);
+    GetClassName(hWnd, sb, sb.Capacity);
+    return sb.ToString();
+  }
+
+  public static List<IntPtr> GetChildWindows(IntPtr hWndParent) {
+    var children = new List<IntPtr>();
+    EnumChildWindows(hWndParent, (hWnd, lParam) => {
+      children.Add(hWnd);
+      return true;
+    }, IntPtr.Zero);
+    return children;
+  }
 }
 "@
 
+# 証明書の選択
 $japaneseTitle = [string]::Concat(
   [char]0x8A3C,
   [char]0x660E,
@@ -82,6 +87,9 @@ $japaneseTitle = [string]::Concat(
   [char]0x629E
 )
 
+# OK ボタンのテキスト
+$okText = "OK"
+
 $titlePatterns = @(
   $japaneseTitle,
   'Certificate Selection',
@@ -89,9 +97,8 @@ $titlePatterns = @(
 )
 
 $shell = New-Object -ComObject WScript.Shell
-$deadline = (Get-Date).AddSeconds([Math]::Max($TimeoutSeconds, 1))
 
-while ((Get-Date) -lt $deadline) {
+while ($true) {
   foreach ($hWnd in [NativeWindows]::GetVisibleWindows()) {
     $title = [NativeWindows]::GetTitle($hWnd)
     if (-not $title) { continue }
@@ -105,12 +112,27 @@ while ((Get-Date) -lt $deadline) {
     }
 
     if ($matched) {
-      [NativeWindows]::SetForegroundWindow($hWnd) | Out-Null
-      Start-Sleep -Milliseconds 300
-      $shell.SendKeys("{ENTER}")
-      Start-Sleep -Milliseconds 500
-      $shell.SendKeys("{ENTER}")
-      exit 0
+      # 方法1: 子ウィンドウから OK ボタンを探して BM_CLICK
+      $clicked = $false
+      foreach ($child in [NativeWindows]::GetChildWindows($hWnd)) {
+        $childText = [NativeWindows]::GetTitle($child)
+        $childClass = [NativeWindows]::GetClass($child)
+        if ($childText -eq $okText -or $childText -eq "&OK") {
+          [NativeWindows]::SendMessage($child, [NativeWindows]::BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+          $clicked = $true
+          break
+        }
+      }
+
+      # 方法2: フォアグラウンドにして Enter キー送信
+      if (-not $clicked) {
+        [NativeWindows]::SetForegroundWindow($hWnd) | Out-Null
+        Start-Sleep -Milliseconds 200
+        $shell.SendKeys("{ENTER}")
+      }
+
+      # ダイアログが閉じるのを待ってから再監視
+      Start-Sleep -Milliseconds 1000
     }
   }
 
