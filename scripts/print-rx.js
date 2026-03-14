@@ -222,6 +222,7 @@ function startChromeProcess() {
       "--new-window",
       "--kiosk-printing",
       "--auto-ssl-client-auth",
+      "--disable-save-password-bubble",
       "--show-bookmark-bar",
       `--user-data-dir=${DIGIKAR_USER_DATA}`,
       `--profile-directory=${DIGIKAR_PROFILE_DIRECTORY}`,
