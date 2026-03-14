@@ -16,7 +16,7 @@ const path = require("path");
 const { chromium } = require("playwright");
 const pdfParse = require("pdf-parse");
 const { PDFDocument } = require("pdf-lib");
-const { spawn } = require("child_process");
+const { spawn, exec } = require("child_process");
 const { startCertificateDialogHelper } = require("./certificate_dialog_helper");
 const { setupUserscriptInjection } = require("./userscript_injector");
 
@@ -549,12 +549,10 @@ async function watchLoop(browser) {
       const nodePath = process.execPath;
       const scriptPath = path.join(__dirname, "..", "tools", "draft-save.js");
       try {
-        const draftChild = spawn(
-          "cmd",
-          ["/c", `start "DraftSave" cmd /k "${nodePath}" "${scriptPath}"`],
-          { cwd: path.join(__dirname, ".."), detached: true, stdio: "ignore", shell: false }
+        exec(
+          `start "DraftSave" cmd /k "${nodePath}" "${scriptPath}"`,
+          { cwd: path.join(__dirname, "..") }
         );
-        draftChild.unref();
         log(`下書き保存プロセス起動: ${scriptPath}`);
       } catch (err) {
         log(`下書き保存起動エラー: ${err.message}`);
