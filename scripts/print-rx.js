@@ -550,8 +550,8 @@ async function watchLoop(browser) {
       try {
         const draftChild = spawn(
           "cmd",
-          ["/c", "start", '"DraftSave"', "cmd", "/k",
-           `"${nodePath}" "${scriptPath}"`],
+          ["/c", "start", "DraftSave", "cmd", "/k",
+           `"${nodePath}"`, `"${scriptPath}"`],
           { cwd: path.join(__dirname, ".."), detached: true, stdio: "ignore" }
         );
         draftChild.unref();
