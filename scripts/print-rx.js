@@ -223,6 +223,7 @@ function startChromeProcess() {
       "--kiosk-printing",
       "--auto-ssl-client-auth",
       "--disable-save-password-bubble",
+      "--disable-password-generation",
       "--show-bookmark-bar",
       `--user-data-dir=${DIGIKAR_USER_DATA}`,
       `--profile-directory=${DIGIKAR_PROFILE_DIRECTORY}`,
@@ -314,6 +315,19 @@ function ensureBookmarkBarVisible() {
       ...((basePrefs.account_values || {}).bookmark_bar || {}),
       show_on_all_tabs: true,
     },
+  };
+
+  // パスワード保存ダイアログを無効化
+  basePrefs.credentials_enable_service = false;
+  basePrefs.credentials_enable_autosignin = false;
+  basePrefs.password_manager = {
+    ...(basePrefs.password_manager || {}),
+    offer_to_save_passwords: false,
+    profile_store_date_last_used_for_filling: 0,
+  };
+  basePrefs.profile = {
+    ...(basePrefs.profile || {}),
+    password_manager_enabled: false,
   };
 
   writeJsonFile(prefsPath, basePrefs);
@@ -550,7 +564,7 @@ async function watchLoop(browser) {
       const scriptPath = path.join(__dirname, "..", "tools", "draft-save.js");
       try {
         exec(
-          `start "DraftSave" cmd /k "${nodePath}" "${scriptPath}"`,
+          `start "DraftSave" cmd /k ""${nodePath}" "${scriptPath}""`,
           { cwd: path.join(__dirname, "..") }
         );
         log(`下書き保存プロセス起動: ${scriptPath}`);

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      3.5.1
+// @version      3.6.0
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -19,9 +19,9 @@
   // ══════════════════════════════════════════════════════════════
   const DEBUG = false;
   const INFO_LOG = DEBUG || window.localStorage.getItem("jiritsu_tmp_log") === "1";
-  const DEFAULT_WAIT_INTERVAL = 60;
-  const ENSURE_BUTTON_DEBOUNCE_MS = 120;
-  const URL_WATCH_INTERVAL_MS = 1500;
+  const DEFAULT_WAIT_INTERVAL = 30;
+  const ENSURE_BUTTON_DEBOUNCE_MS = 80;
+  const URL_WATCH_INTERVAL_MS = 1000;
 
   // ══════════════════════════════════════════════════════════════
   // 業務定数
@@ -421,7 +421,7 @@
     if (el.value === value) { log(`  ${label}: React fiber 成功`); return true; }
     // fiber は非同期レンダリングの場合があるので少し待つ
     if (fiberOk) {
-      await sleep(80);
+      await sleep(30);
       if (el.value === value) { log(`  ${label}: React fiber 成功（遅延）`); return true; }
     }
 
@@ -623,7 +623,7 @@
     log(`モーダル「${titleText}」を閉じるボタンをクリック`);
 
     try {
-      await waitForCondition(() => !findModalByTitle(titleText), 3000, 100);
+      await waitForCondition(() => !findModalByTitle(titleText), 1500, 50);
       log(`モーダル「${titleText}」を閉じました ✓`);
       return true;
     } catch (e) {
@@ -633,7 +633,7 @@
   }
 
   async function closePublicExpenseHistoryModalIfPresent() {
-    const closed = await closeModalByTitle("公費更新履歴", 2000);
+    const closed = await closeModalByTitle("公費更新履歴", 800);
     if (closed) return true;
     return false;
   }
@@ -645,13 +645,13 @@
     log(`${reason} をクリック`);
 
     try {
-      const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 2000);
+      const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 1000);
       log(`カルテ更新モーダルが開きました（${reason}）`);
       return modal;
     } catch (_) {}
 
     if (closeUnexpectedModalIfNeeded()) {
-      await sleep(100);
+      await sleep(50);
     }
 
     return null;
@@ -735,8 +735,8 @@
   async function clickChartTemporarySaveButton() {
     const saveBtn = await waitForElement(
       () => queryVisible(SELECTORS.chartTempSaveButton) || findButtonBySvgSelector(SELECTORS.saveIconPath),
-      6000,
-      100
+      3000,
+      50
     ).catch(() => null);
 
     if (!saveBtn) throw new Error("一時保存ボタンが見つかりません");
@@ -758,7 +758,7 @@
     // 「下書き保存」ボタンを探す（ダイアログ内）
     const draftBtn = await waitForElement(() => {
       return findButtonByText("下書き保存");
-    }, 2000).catch(() => null);
+    }, 1000).catch(() => null);
 
     if (draftBtn) {
       safeClick(draftBtn);
@@ -766,7 +766,7 @@
 
       // ダイアログが閉じるのを待つ
       try {
-        await waitForCondition(() => !findButtonByText("下書き保存"), 5000, 100);
+        await waitForCondition(() => !findButtonByText("下書き保存"), 2000, 50);
         log("下書き保存ダイアログが閉じました ✓");
       } catch (e) {
         warn("下書き保存ダイアログがまだ開いている可能性があります");
@@ -794,13 +794,13 @@
 
     // 一覧が表示されるのを待つ
     try {
-      await waitForElement(() => findInsuranceCellInChartList(), 8000, 150);
+      await waitForElement(() => findInsuranceCellInChartList(), 4000, 80);
       log("患者一覧に戻りました ✓");
     } catch (e) {
       // 戻れなかった場合、もう一度試す
       warn("患者一覧が表示されません。もう一度戻ります...");
       history.back();
-      await waitForElement(() => findInsuranceCellInChartList(), 8000, 150).catch(() => {});
+      await waitForElement(() => findInsuranceCellInChartList(), 4000, 80).catch(() => {});
     }
   }
 
@@ -822,7 +822,7 @@
   }
 
   async function clickInsuranceCellInChartList() {
-    const cell = await waitForElement(() => findInsuranceCellInChartList(), 6000).catch(() => null);
+    const cell = await waitForElement(() => findInsuranceCellInChartList(), 3000).catch(() => null);
     if (!cell) throw new Error("カルテ一覧の保険セルが見つかりません");
 
     safeClick(cell);
@@ -830,7 +830,7 @@
 
     // 予約編集モーダルが開くか短時間待つ
     try {
-      await waitForElement(() => findModalByTitle("予約編集"), 1500);
+      await waitForElement(() => findModalByTitle("予約編集"), 800);
     } catch (_) {
       // 開かなければ編集アイコンもクリック
       const editBtn = cell.querySelector(SELECTORS.chartListInsuranceEditButton);
@@ -848,7 +848,7 @@
     log("STEP: 予約編集モーダルで公費1に自立仮番をセット");
 
     // 予約編集モーダルが開くのを待つ
-    const modal = await waitForElement(() => findModalByTitle("予約編集"), 5000).catch(() => null);
+    const modal = await waitForElement(() => findModalByTitle("予約編集"), 2000).catch(() => null);
     if (!modal) throw new Error("予約編集モーダルが見つかりません");
 
     // 公費1の select を探す
@@ -901,12 +901,12 @@
 
     // モーダルが閉じるのを待つ（確認ダイアログが出た場合も対応）
     try {
-      await waitForCondition(() => !findModalByTitle("予約編集"), 4000);
+      await waitForCondition(() => !findModalByTitle("予約編集"), 2000);
       log("予約編集モーダルが閉じました ✓");
     } catch (_) {
       await handleCustomConfirmDialog();
       try {
-        await waitForCondition(() => !findModalByTitle("予約編集"), 3000);
+        await waitForCondition(() => !findModalByTitle("予約編集"), 1500);
       } catch (__) {
         warn("予約編集モーダルが閉じません。手動で確認してください。");
         showToast("予約編集を確認してください", "warn");
@@ -1019,7 +1019,7 @@
 
     // blur で確定
     inputEl.dispatchEvent(new Event("blur", { bubbles: true }));
-    await sleep(50);
+    await sleep(20);
 
     // 値が入ったか確認（和暦変換されている場合も成功とみなす）
     const afterVal = inputEl.value;
@@ -1038,7 +1038,7 @@
     inputEl.focus();
     setNativeValue(inputEl, isoVal);
     inputEl.dispatchEvent(new Event("blur", { bubbles: true }));
-    await sleep(50);
+    await sleep(20);
 
     const afterVal2 = inputEl.value;
     if (afterVal2 && afterVal2.length > 0 && afterVal2 !== inputEl.placeholder) {
@@ -1054,7 +1054,7 @@
 
     // input をクリックしてカレンダーを開く
     safeClick(inputEl);
-    await sleep(80);
+    await sleep(30);
 
     // カレンダーポップアップを探す
     const calendarOk = await navigateCalendar(dateObj, label);
@@ -1147,7 +1147,7 @@
 
       if (navBtn) {
         safeClick(navBtn);
-        await sleep(50);
+        await sleep(20);
       } else {
         debug(`  ${label}: カレンダーのナビゲーションボタンが見つかりません`);
         return false;
@@ -1304,7 +1304,7 @@
   async function waitForPhase2Ready() {
     log("Phase 2 準備: 公費一覧の反映待ち...");
     try {
-      await waitForCondition(() => !!findTextElement(TEMP_FUTANSHA), 1500);
+      await waitForCondition(() => !!findTextElement(TEMP_FUTANSHA), 800);
       log(`公費一覧に ${TEMP_FUTANSHA} を検出 ✓`);
     } catch (_) {
       debug("公費一覧の反映待ちがタイムアウト、継続");
@@ -1315,7 +1315,7 @@
     try {
       await waitForCondition(
         () => !!findTextElement("1回あたり", modal) || !!findTextElement("1月あたり", modal),
-        1000
+        500
       );
     } catch (_) {}
   }
@@ -1391,7 +1391,7 @@
     log("＋ボタンをクリック");
 
     // 公費追加モーダルが開くのを待つ
-    const modal = await waitForElement(() => findModalByTitle("公費追加"), 5000);
+    const modal = await waitForElement(() => findModalByTitle("公費追加"), 3000);
     log("公費追加モーダルが開きました");
     return modal;
   }
@@ -1444,7 +1444,7 @@
         if (!kouhiSelect) return false;
         const sel = kouhiSelect.options[kouhiSelect.selectedIndex]?.textContent || "";
         return sel.includes(KOUHI_TYPE_TEXT);
-      }, 2000);
+      }, 1000);
       log(`  C: 公費の種類 ← 自動選択済み ✓`);
     } catch (_) {
       kouhiSelect = kouhiSelect || modal.querySelector(SELECTORS.kouhiTypeSelect) || findByLabel("公費の種類", "select", modal);
@@ -1662,12 +1662,12 @@
         // 確認ダイアログが出ていたら即座にOK
         handleCustomConfirmDialog();
         return !findModalByTitle("公費追加");
-      }, 6000);
+      }, 3000);
       log("公費追加モーダルが閉じました ✓");
     } catch (_) {
       await handleCustomConfirmDialog();
       try {
-        await waitForCondition(() => !findModalByTitle("公費追加"), 3000);
+        await waitForCondition(() => !findModalByTitle("公費追加"), 1500);
       } catch (__) {
         warn("モーダルが閉じません。手動で確認してください。");
         showToast("登録完了を確認してください", "warn");
@@ -1693,7 +1693,7 @@
     // Method 0: prefer the edit button on the newly added 21000000 row.
     const publicRowEditBtn = await waitForElement(
       () => findPublicExpenseRowEditButton(TEMP_FUTANSHA),
-      3000
+      1500
     ).catch(() => null);
     const publicRowModal = await tryOpenChartUpdateFromButton(
       publicRowEditBtn,
@@ -1703,7 +1703,7 @@
     log("STEP: カルテ更新モーダルを開く（Phase 2）");
 
     /** クリック→カルテ更新モーダル出現を待つ共通処理 (waitTimeMs以内) */
-    async function clickAndWaitForChartModal(target, label, waitMs = 1500) {
+    async function clickAndWaitForChartModal(target, label, waitMs = 800) {
       safeClick(target);
       log(`${label} をクリック`);
       try {
@@ -1716,7 +1716,7 @@
       if (any) {
         const cb = any.querySelector('[aria-label="close"], [class*="close"]')
           || findButtonByText("×", any) || findButtonByText("✕", any);
-        if (cb) { safeClick(cb); await sleep(80); }
+        if (cb) { safeClick(cb); await sleep(30); }
       }
       return null;
     }
@@ -1779,7 +1779,7 @@
     for (const btn of allBtns) {
       if (!btn.querySelector("svg") || btn.offsetParent === null) continue;
       if (btn.closest('[class*="modal"], [role="dialog"]')) continue;
-      const m4 = await clickAndWaitForChartModal(btn, "総当たりSVG", 1000);
+      const m4 = await clickAndWaitForChartModal(btn, "総当たりSVG", 500);
       if (m4) return m4;
     }
 
@@ -1960,12 +1960,12 @@
       await waitForCondition(() => {
         handleCustomConfirmDialog();
         return !findModalByTitle("カルテ更新");
-      }, 5000);
+      }, 3000);
       log("カルテ更新完了 ✓");
     } catch (_) {
       await handleCustomConfirmDialog();
       try {
-        await waitForCondition(() => !findModalByTitle("カルテ更新"), 3000);
+        await waitForCondition(() => !findModalByTitle("カルテ更新"), 1500);
       } catch (__) {
         warn("カルテ更新モーダルが閉じません。手動で確認してください。");
         showToast("カルテ更新を確認してください", "warn");
@@ -2181,9 +2181,9 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v3.5.0 初期化");
+    log("v3.6.0 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
-    setTimeout(() => { ensureButton(); startObserver(); }, 1500);
+    setTimeout(() => { ensureButton(); startObserver(); }, 800);
   }
 
   if (document.readyState === "loading") {
