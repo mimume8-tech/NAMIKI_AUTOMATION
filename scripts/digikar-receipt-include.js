@@ -78,7 +78,6 @@ function prompt(msg) {
     [
       `--remote-debugging-port=${DEBUG_PORT}`,
       '--remote-debugging-address=127.0.0.1',
-      '--auto-select-certificate-for-urls={"pattern":"*://digikar.jp"}',
       `--user-data-dir=${CHROME_USER_DATA}`,
       '--profile-directory=Default',
       receptionUrl,

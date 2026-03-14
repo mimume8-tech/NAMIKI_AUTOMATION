@@ -71,7 +71,6 @@ async function waitForStable(page, ms = 1500) {
   const child = spawn(CHROME_PATH, [
     `--remote-debugging-port=${DEBUG_PORT}`,
     '--remote-debugging-address=127.0.0.1',
-    '--auto-select-certificate-for-urls={"pattern":"*://digikar.jp"}',
     '--no-first-run',
     '--new-window',
     `--user-data-dir=${DIGIKAR_USER_DATA}`,

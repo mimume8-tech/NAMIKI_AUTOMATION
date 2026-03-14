@@ -211,7 +211,6 @@ function startChromeProcess() {
       "--new-window",
       "--kiosk-printing",
       "--show-bookmark-bar",
-      '--auto-select-certificate-for-urls={"pattern":"*://digikar.jp"}',
       `--user-data-dir=${DIGIKAR_USER_DATA}`,
       `--profile-directory=${DIGIKAR_PROFILE_DIRECTORY}`,
       DIGIKAR_URL,
@@ -535,8 +534,8 @@ async function watchLoop(browser) {
       try {
         const draftChild = spawn(
           "cmd",
-          ["/c", "start", '"DraftSave"', "cmd", "/c",
-           `"${nodePath}" "${scriptPath}" & pause`],
+          ["/c", "start", '"DraftSave"', "cmd", "/k",
+           `"${nodePath}" "${scriptPath}"`],
           { cwd: path.join(__dirname, ".."), detached: true, stdio: "ignore" }
         );
         draftChild.unref();
