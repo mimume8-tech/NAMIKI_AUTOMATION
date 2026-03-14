@@ -29,7 +29,7 @@ const DEBUG_PORT = 9222;
 const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const DEFAULT_CHROME_USER_DATA = "C:\\Users\\ykimu\\AppData\\Local\\Google\\Chrome\\User Data";
 const DEFAULT_CHROME_PROFILE_DIRECTORY = "Default";
-const DIGIKAR_USER_DATA = "C:\\Users\\ykimu\\AppData\\Local\\Google\\Chrome\\DigikarAuto";
+const DIGIKAR_USER_DATA = "C:\\ChromeDebugProfile";
 const DIGIKAR_PROFILE_DIRECTORY = "Default";
 const DIGIKAR_URL = "https://digikar.jp/reception/";
 const PATIENT_NAME = "木村友哉";
@@ -195,7 +195,7 @@ async function launchChrome() {
   startChromeProcess();
   const ready = await waitForDebugPort(30_000);
   if (!ready) {
-    throw new Error("Chrome を DigikarAuto プロファイルで起動できませんでした。");
+    throw new Error("Chrome を ChromeDebugProfile で起動できませんでした。");
   }
   log("Chrome 起動OK");
 }

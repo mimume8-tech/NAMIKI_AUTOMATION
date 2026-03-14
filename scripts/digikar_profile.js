@@ -4,7 +4,7 @@ const path = require("path");
 const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const DEFAULT_CHROME_USER_DATA = "C:\\Users\\ykimu\\AppData\\Local\\Google\\Chrome\\User Data";
 const DEFAULT_CHROME_PROFILE_DIRECTORY = "Default";
-const DIGIKAR_USER_DATA = "C:\\Users\\ykimu\\AppData\\Local\\Google\\Chrome\\DigikarAuto";
+const DIGIKAR_USER_DATA = "C:\\ChromeDebugProfile";
 const DIGIKAR_PROFILE_DIRECTORY = "Default";
 
 const ROOT_SYNC_FILES = ["Local State", "Last Version", "Last Browser"];
