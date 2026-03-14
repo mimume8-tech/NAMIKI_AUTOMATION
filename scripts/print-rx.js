@@ -530,17 +530,38 @@ async function watchLoop(browser) {
 
     if (draftSaveRequested) {
       log("下書き一括保存 開始 → 別ウィンドウで実行します...");
+      const nodePath = process.execPath;
+      const scriptPath = path.join(__dirname, "..", "tools", "draft-save.js");
       try {
         const draftChild = spawn(
           "cmd",
-          ["/c", "start", "", "cmd", "/c",
-           `node tools/draft-save.js & pause`],
+          ["/c", "start", "DraftSave", "cmd", "/c",
+           `"${nodePath}" "${scriptPath}" & pause`],
           { cwd: path.join(__dirname, ".."), detached: true, stdio: "ignore" }
         );
         draftChild.unref();
+        log(`下書き保存プロセス起動: ${scriptPath}`);
       } catch (err) {
         log(`下書き保存起動エラー: ${err.message}`);
+        // 起動失敗時はボタンをリセット
+        await kartePage.evaluate(() => {
+          localStorage.setItem("__draft_save_completed", "1");
+        }).catch(() => {});
       }
+      // 5分後にボタンが戻っていなければ強制リセット
+      setTimeout(async () => {
+        try {
+          const page = await getDigikarPage(context);
+          if (page) {
+            await page.evaluate(() => {
+              const btn = document.querySelector('[data-role="draft-save"].is-running');
+              if (btn) {
+                localStorage.setItem("__draft_save_completed", "1");
+              }
+            });
+          }
+        } catch {}
+      }, 5 * 60 * 1000);
       await sleep(2000);
       continue;
     }
@@ -919,7 +940,14 @@ async function ensurePrintModePanel(page) {
           }
 
           const draftBtn = event.target.closest('button[data-role="draft-save"]');
-          if (draftBtn && !draftBtn.classList.contains("is-running")) {
+          if (draftBtn) {
+            if (draftBtn.classList.contains("is-running")) {
+              // 実行中に再クリック → 強制リセット
+              draftBtn.classList.remove("is-running");
+              draftBtn.textContent = "下書き一括保存";
+              localStorage.removeItem("__draft_save_requested");
+              return;
+            }
             draftBtn.classList.add("is-running");
             draftBtn.textContent = "実行中...";
             localStorage.setItem("__draft_save_requested", "1");

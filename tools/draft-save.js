@@ -235,30 +235,37 @@ async function processOneKarte(page, fullUrl) {
     return "skipped";
   }
 
-  // 複写を試みる
+  // 複写を試みる（各セクションで既存内容があればスキップ）
   let copyResult = await doCopyButtonsWithVerify(page);
   const stillEmpty = await checkEditingAreaEmpty(page);
 
   if (stillEmpty || !copyResult.shuso || !copyResult.shochi) {
-    log("  ⚠ 複写後も不完全 → 空の下書きを削除して再試行");
+    // 既存入力がある場合はリセットせず、足りない部分だけ再試行
+    const hasPartialContent = !stillEmpty;
+    if (hasPartialContent) {
+      log("  ⚠ 部分的に複写済み → 不足分のみ再試行（既存内容は保持）");
+      copyResult = await doCopyButtonsWithVerify(page);
+    } else {
+      log("  ⚠ 複写後も不完全 → 空の下書きを削除して再試行");
 
-    try {
-      await clickTabCloseButton(page);
-      await sleep(800);
-      await handleConfirmDialog(page);
-      await sleep(800);
-    } catch (e) {
-      console.warn(`    ⚠ タブ閉じ失敗: ${e.message}`);
+      try {
+        await clickTabCloseButton(page);
+        await sleep(800);
+        await handleConfirmDialog(page);
+        await sleep(800);
+      } catch (e) {
+        console.warn(`    ⚠ タブ閉じ失敗: ${e.message}`);
+      }
+
+      await page.goto(fullUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await sleep(1500);
+
+      await page.evaluate(() => {
+        document.querySelectorAll('[class*="modal-flag"]').forEach((el) => el.remove());
+      });
+
+      copyResult = await doCopyButtonsWithVerify(page);
     }
-
-    await page.goto(fullUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await sleep(1500);
-
-    await page.evaluate(() => {
-      document.querySelectorAll('[class*="modal-flag"]').forEach((el) => el.remove());
-    });
-
-    copyResult = await doCopyButtonsWithVerify(page);
 
     if (!copyResult.shuso || !copyResult.shochi) {
       const failed = [];
@@ -312,53 +319,67 @@ async function doCopyButtonsWithVerify(page) {
   const MAX_RETRIES = 2;
 
   // --- 主訴・所見 ---
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      await clickSectionCopyButton(page, "主訴・所見");
-      await sleep(1000);
-      const hasContent = await checkSectionHasContent(page, "主訴");
-      if (hasContent) {
-        log("  ✓ 主訴・所見 複写");
-        result.shuso = true;
-        break;
-      } else if (attempt < MAX_RETRIES) {
-        log(`  ⚠ 主訴・所見 未反映 → リトライ (${attempt}/${MAX_RETRIES})`);
-        await sleep(500);
-      } else {
-        log(`  ⚠ 主訴・所見 未反映 (${MAX_RETRIES}回試行)`);
-      }
-    } catch (e) {
-      if (attempt < MAX_RETRIES) {
-        log(`  ⚠ 主訴・所見: ${e.message} → リトライ`);
-        await sleep(500);
-      } else {
-        log(`  ⚠ 主訴・所見: ${e.message}`);
+  // 既に内容があればスキップ（二重複写防止）
+  const shusoAlready = await checkSectionHasContent(page, "主訴");
+  if (shusoAlready) {
+    log("  → 主訴・所見: 既に入力あり → スキップ");
+    result.shuso = true;
+  } else {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await clickSectionCopyButton(page, "主訴・所見");
+        await sleep(1000);
+        const hasContent = await checkSectionHasContent(page, "主訴");
+        if (hasContent) {
+          log("  ✓ 主訴・所見 複写");
+          result.shuso = true;
+          break;
+        } else if (attempt < MAX_RETRIES) {
+          log(`  ⚠ 主訴・所見 未反映 → リトライ (${attempt}/${MAX_RETRIES})`);
+          await sleep(500);
+        } else {
+          log(`  ⚠ 主訴・所見 未反映 (${MAX_RETRIES}回試行)`);
+        }
+      } catch (e) {
+        if (attempt < MAX_RETRIES) {
+          log(`  ⚠ 主訴・所見: ${e.message} → リトライ`);
+          await sleep(500);
+        } else {
+          log(`  ⚠ 主訴・所見: ${e.message}`);
+        }
       }
     }
   }
 
   // --- 処置・行為 ---
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      await clickSectionCopyButton(page, "処置・行為");
-      await sleep(1000);
-      const hasContent = await checkSectionHasContent(page, "処置");
-      if (hasContent) {
-        log("  ✓ 処置・行為 複写");
-        result.shochi = true;
-        break;
-      } else if (attempt < MAX_RETRIES) {
-        log(`  ⚠ 処置・行為 未反映 → リトライ (${attempt}/${MAX_RETRIES})`);
-        await sleep(500);
-      } else {
-        log(`  ⚠ 処置・行為 未反映 (${MAX_RETRIES}回試行)`);
-      }
-    } catch (e) {
-      if (attempt < MAX_RETRIES) {
-        log(`  ⚠ 処置・行為: ${e.message} → リトライ`);
-        await sleep(500);
-      } else {
-        log(`  ⚠ 処置・行為: ${e.message}`);
+  // 既に内容があればスキップ（二重複写防止）
+  const shochiAlready = await checkSectionHasContent(page, "処置");
+  if (shochiAlready) {
+    log("  → 処置・行為: 既に入力あり → スキップ");
+    result.shochi = true;
+  } else {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await clickSectionCopyButton(page, "処置・行為");
+        await sleep(1000);
+        const hasContent = await checkSectionHasContent(page, "処置");
+        if (hasContent) {
+          log("  ✓ 処置・行為 複写");
+          result.shochi = true;
+          break;
+        } else if (attempt < MAX_RETRIES) {
+          log(`  ⚠ 処置・行為 未反映 → リトライ (${attempt}/${MAX_RETRIES})`);
+          await sleep(500);
+        } else {
+          log(`  ⚠ 処置・行為 未反映 (${MAX_RETRIES}回試行)`);
+        }
+      } catch (e) {
+        if (attempt < MAX_RETRIES) {
+          log(`  ⚠ 処置・行為: ${e.message} → リトライ`);
+          await sleep(500);
+        } else {
+          log(`  ⚠ 処置・行為: ${e.message}`);
+        }
       }
     }
   }
