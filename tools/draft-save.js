@@ -513,55 +513,63 @@ async function checkSectionHasContent(page, keyword) {
 
 async function clickSectionCopyButton(page, sectionTitle) {
   const pos = await page.evaluate((title) => {
-    // 編集パネル内のセクションタイトルを探す（left >= 200, 算定サイドバー除外）
-    const titleNodes = [];
+    // ── 1. ドキュメント全体から複写ボタンを収集 ──
+    // 複写ボタンは #undefined-tooltip-root > button にあり、
+    // セクションタイトルの親階層には存在しない（React portal）
+    // SVGパス M15 18v-4.5H9A4.5... で特定する
+    const copyButtons = [];
+    const allButtons = document.querySelectorAll('button[data-variant="iconOnly"]');
+    for (const btn of allButtons) {
+      const pathEl = btn.querySelector("svg path");
+      if (!pathEl) continue;
+      const d = pathEl.getAttribute("d") || "";
+      if (!d.startsWith("M15 18v-4.5H9A4.5")) continue;
+      const bRect = btn.getBoundingClientRect();
+      if (bRect.width === 0 || bRect.height === 0) continue;
+      copyButtons.push({
+        x: bRect.left + bRect.width / 2,
+        y: bRect.top + bRect.height / 2,
+      });
+    }
+
+    if (copyButtons.length === 0) return null;
+
+    // ── 2. セクションタイトルの全出現位置を取得 ──
+    const titlePositions = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
-      if (node.textContent.trim() !== title) continue;
+      const text = node.textContent.trim();
+      if (text !== title) continue;
       const el = node.parentElement;
       if (!el) continue;
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) continue;
-      if (rect.left < 200 || rect.left > window.innerWidth * 0.78) continue;
-      titleNodes.push({ el, top: rect.top, left: rect.left });
+      titlePositions.push({ x: rect.left, y: rect.top });
     }
 
-    const matches = [];
-    for (const tn of titleNodes) {
-      // 親要素を最大8階層まで遡って複写ボタンを探す
-      let container = tn.el;
-      let found = false;
-      for (let level = 0; level < 8 && !found; level++) {
-        container = container.parentElement;
-        if (!container) break;
+    if (titlePositions.length === 0) return null;
 
-        const buttons = container.querySelectorAll('button[data-variant="iconOnly"]');
-        for (const btn of buttons) {
-          const pathEl = btn.querySelector("svg path");
-          if (!pathEl) continue;
-          const d = pathEl.getAttribute("d") || "";
-          if (!d.startsWith("M15 18v-4.5H9")) continue;
+    // ── 3. タイトルと複写ボタンの最近接ペアを見つける ──
+    let bestMatch = null;
+    let bestDist = Infinity;
 
-          const bRect = btn.getBoundingClientRect();
-          if (bRect.width === 0 || bRect.height === 0) continue;
-          // ボタンがセクションタイトルの近くにあることを確認（y方向±50px）
-          if (Math.abs(bRect.top - tn.top) > 50) continue;
-
-          matches.push({
-            x: Math.round(bRect.left + bRect.width / 2),
-            y: Math.round(bRect.top + bRect.height / 2),
-            top: tn.top,
-          });
-          found = true;
-          break;
+    for (const tp of titlePositions) {
+      for (const cb of copyButtons) {
+        const dx = cb.x - tp.x;
+        const dy = cb.y - tp.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestMatch = { x: Math.round(cb.x), y: Math.round(cb.y) };
         }
       }
     }
 
-    matches.sort((a, b) => a.top - b.top);
-    if (matches.length >= 1) return matches[0];
-    return null;
+    // 300px以内でなければ不一致とみなす
+    if (bestDist > 300) return null;
+
+    return bestMatch;
   }, sectionTitle);
 
   if (!pos) throw new Error(`"${sectionTitle}" の複写ボタンが見つかりません`);
