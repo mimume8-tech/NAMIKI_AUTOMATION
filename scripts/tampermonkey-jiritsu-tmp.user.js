@@ -781,27 +781,43 @@
    * カルテページから患者一覧（その日のリスト）に戻る
    * 下書き保存後、ページがカルテのままなら戻る操作を行う
    */
-  async function navigateBackToPatientList() {
+  async function navigateBackToReceptionList() {
     // 既に保険セルが見えるなら（一覧ページにいるなら）何もしない
     if (findInsuranceCellInChartList()) {
-      log("既に患者一覧ページにいます");
+      log("既に受付一覧ページにいます");
       return;
     }
 
-    // カルテページにいる場合、ブラウザの戻るボタンで一覧に戻る
-    // URLパターン: /karte/patients/... → 戻ると /reception/... or 日別一覧
-    log("history.back() で患者一覧に戻ります");
+    // SPA内でhistory.back()を使って受付一覧に戻る（フルリロードなし・高速）
+    log("history.back() で受付一覧に戻ります");
     history.back();
 
-    // 一覧が表示されるのを待つ
+    // 一覧テーブルが表示されるのを待つ
     try {
-      await waitForElement(() => findInsuranceCellInChartList(), 5000, 100);
-      log("患者一覧に戻りました ✓");
+      await waitForElement(() => document.querySelector("table tbody tr"), 6000, 100);
+      log("受付一覧に戻りました ✓");
     } catch (e) {
-      // 戻れなかった場合、もう一度試す
-      warn("患者一覧が表示されません。もう一度戻ります...");
-      history.back();
-      await waitForElement(() => findInsuranceCellInChartList(), 5000, 100).catch(() => {});
+      // history.back()で戻れなかった場合、sessionStorageの日付で直接遷移
+      const storedDate = sessionStorage.getItem("jiritsu_reception_date");
+      if (storedDate) {
+        warn(`history.back()失敗。受付ページへ直接遷移します (date=${storedDate})`);
+        window.location.href = `/reception/${storedDate}`;
+        // フルリロード後のテーブル描画を待つ
+        await waitForElement(() => document.querySelector("table tbody tr"), 8000, 100).catch(() => {});
+      } else {
+        warn("受付一覧に戻れません");
+      }
+    }
+
+    // 正しい日付の受付ページにいるか検証
+    const storedDate = sessionStorage.getItem("jiritsu_reception_date");
+    if (storedDate) {
+      const currentPath = location.pathname;
+      if (!currentPath.includes(storedDate)) {
+        log(`日付不一致: 現在=${currentPath}, 期待=${storedDate} → 正しいページへ遷移`);
+        window.location.href = `/reception/${storedDate}`;
+        await waitForElement(() => document.querySelector("table tbody tr"), 8000, 100).catch(() => {});
+      }
     }
   }
 
@@ -2270,25 +2286,21 @@
 
         log("===== Phase 2（カルテ更新）完了 =====");
 
-        // Phase 3: 受付一覧の予約公費更新
-        // history.back() は不安定なので、localStorage に保留状態を保存し
-        // 受付ページへ直接遷移 → ページ再初期化時に保留処理を実行する
-        step = "受付一覧へ遷移（予約公費更新）";
+        // Phase 3: 受付一覧に戻って予約の公費1を更新
+        // SPA内のhistory.back()でページ遷移なしに戻る（フルリロードより高速・確実）
+        step = "受付一覧に戻る";
+        log("===== Phase 3（予約公費更新）開始 =====");
+        showToast("受付一覧で予約の公費を更新します...", "info");
+
+        await navigateBackToReceptionList();
+        await sleep(300);
+
+        step = "予約の公費1を更新";
         if (patientChartNumber) {
-          // 受付ページの日付を取得（sessionStorageに記憶済み、なければ今日で代替）
-          const storedReceptionDate = sessionStorage.getItem("jiritsu_reception_date");
-          const today2 = getTodayJST();
-          const fallbackDateStr = `${today2.year}${String(today2.month).padStart(2, '0')}${String(today2.day).padStart(2, '0')}`;
-          const receptionDateStr = storedReceptionDate || fallbackDateStr;
-          localStorage.setItem(PENDING_RESERVATION_KEY, JSON.stringify({
-            patientNumber: patientChartNumber,
-            receptionDate: receptionDateStr,
-            timestamp: Date.now()
-          }));
-          log(`予約更新を保留して受付ページに遷移します... (date=${receptionDateStr})`);
-          showToast("受付一覧で予約の公費を更新します...", "info");
-          window.location.href = `/reception/${receptionDateStr}`;
-          return; // ページ遷移 → スクリプト再初期化で processPendingReservationUpdate が実行される
+          await clickInsuranceCellInChartList(patientChartNumber);
+          await selectKouhi1InReservationEditAndUpdate(patientChartNumber);
+          log("===== Phase 3（予約公費更新）完了 =====");
+          showToast("全工程完了！予約の公費1を更新しました。", "success");
         } else {
           warn("患者番号が不明のため予約の公費更新をスキップします");
           showToast("カルテ更新完了。受付一覧の公費は手動で予約編集してください。", "warn");
