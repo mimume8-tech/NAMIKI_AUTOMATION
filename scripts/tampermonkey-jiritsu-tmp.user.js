@@ -826,22 +826,19 @@
    * @param {string|null} patientNumber - 患者番号（例: "2656"）
    */
   function findInsuranceCellInChartList(patientNumber) {
-    // シンプルに: テーブルの各行のテキストに患者番号が含まれるか確認 → 7番目のtdを返す
+    // 4列目（患者番号列）で完全一致 → その行の7列目（保険セル）を返す
     const rows = document.querySelectorAll("table tbody tr");
     for (const row of rows) {
       if (!isVisible(row)) continue;
-      const rowText = row.textContent;
-      if (patientNumber && !rowText.includes(patientNumber)) continue;
       const cells = row.querySelectorAll("td");
-      // 7番目のtd（保険セル）を返す
-      if (cells.length >= 7) {
-        log(`患者番号 ${patientNumber || "指定なし"} の行を発見 → td:nth-child(7)`);
+      if (cells.length < 7) continue;
+      const cellText = cells[3].textContent.trim();
+      if (cellText === patientNumber) {
+        log(`患者番号列で ${patientNumber} を発見 → 保険セル(7列目)を返す`);
         return cells[6];
       }
     }
-    if (patientNumber) {
-      warn(`患者番号 ${patientNumber} の行が見つかりません`);
-    }
+    warn(`患者番号 ${patientNumber} が患者番号列(4列目)に見つかりません`);
     return null;
   }
 
@@ -1403,33 +1400,49 @@
   function extractCurrentPatientChartNumber() {
     // カルテページのヘッダーから患者番号を抽出する
     // 表示例: "♦ 2656 高橋 里佳 タカハシ リカ 45歳 ♀"
-    // 患者番号はページ上部(Y < 170px)に表示される単独の数字
+    // ♦マーカーの近くにある数字が患者番号
 
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    const candidates = [];
+    let diamondPos = null;
+    const numbers = [];
+
     while (walker.nextNode()) {
       const text = walker.currentNode.textContent.trim();
-      if (!/^\d{1,6}$/.test(text)) continue;
       const el = walker.currentNode.parentElement;
       if (!el || !isVisible(el)) continue;
       if (el.closest('[class*="modal"], [role="dialog"]')) continue;
       const rect = el.getBoundingClientRect();
       if (rect.top > 170) continue;
-      candidates.push({ text, top: rect.top, left: rect.left });
+
+      if (text.includes("♦")) {
+        diamondPos = { top: rect.top, left: rect.left };
+      }
+      if (/^\d{1,6}$/.test(text)) {
+        numbers.push({ text, top: rect.top, left: rect.left });
+      }
     }
 
-    if (candidates.length > 0) {
-      // 最も上にある数字を患者番号とする
-      candidates.sort((a, b) => a.top - b.top || a.left - b.left);
-      debug(`extractCurrentPatientChartNumber: "${candidates[0].text}" (y=${candidates[0].top})`);
-      return candidates[0].text;
+    // ♦と同じ行（Y差<30px）にある数字を優先
+    if (diamondPos && numbers.length > 0) {
+      const sameRow = numbers.filter(
+        (n) => Math.abs(n.top - diamondPos.top) < 30
+      );
+      if (sameRow.length > 0) {
+        sameRow.sort((a, b) => a.left - b.left);
+        debug(
+          `extractCurrentPatientChartNumber: ♦近傍 "${sameRow[0].text}" (y=${sameRow[0].top})`
+        );
+        return sameRow[0].text;
+      }
     }
 
-    // フォールバック: URLから患者IDを取得（患者番号ではないが参考情報として）
-    const urlMatch = location.href.match(/\/patients\/(\d+)\//);
-    if (urlMatch) {
-      debug(`extractCurrentPatientChartNumber: URL fallback patientId=${urlMatch[1]}`);
-      return null; // 内部IDは患者番号と異なるのでnullを返す
+    // フォールバック: 最上部の数字
+    if (numbers.length > 0) {
+      numbers.sort((a, b) => a.top - b.top);
+      debug(
+        `extractCurrentPatientChartNumber: fallback "${numbers[0].text}" (y=${numbers[0].top})`
+      );
+      return numbers[0].text;
     }
 
     warn("患者番号を抽出できません");
