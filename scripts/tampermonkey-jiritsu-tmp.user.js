@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      3.8.1
+// @version      3.5.2
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -19,9 +19,9 @@
   // ══════════════════════════════════════════════════════════════
   const DEBUG = false;
   const INFO_LOG = DEBUG || window.localStorage.getItem("jiritsu_tmp_log") === "1";
-  const DEFAULT_WAIT_INTERVAL = 40;
-  const ENSURE_BUTTON_DEBOUNCE_MS = 80;
-  const URL_WATCH_INTERVAL_MS = 1000;
+  const DEFAULT_WAIT_INTERVAL = 60;
+  const ENSURE_BUTTON_DEBOUNCE_MS = 120;
+  const URL_WATCH_INTERVAL_MS = 1500;
 
   // ══════════════════════════════════════════════════════════════
   // 業務定数
@@ -31,7 +31,6 @@
   const MONTHLY_LIMIT = "20000";          // 月上限円（非生活保護）
   const RATE_PERCENT = "10";              // 1回あたり上限%（非生活保護）
   const LIFE_PROTECTION_PREFIX = "12";    // 生活保護の負担者番号先頭
-  const PENDING_RESERVATION_KEY = "jiritsu_pending_reservation"; // 予約公費更新の保留状態用
 
   // ══════════════════════════════════════════════════════════════
   // セレクタ定数
@@ -422,7 +421,7 @@
     if (el.value === value) { log(`  ${label}: React fiber 成功`); return true; }
     // fiber は非同期レンダリングの場合があるので少し待つ
     if (fiberOk) {
-      await sleep(50);
+      await sleep(80);
       if (el.value === value) { log(`  ${label}: React fiber 成功（遅延）`); return true; }
     }
 
@@ -624,7 +623,7 @@
     log(`モーダル「${titleText}」を閉じるボタンをクリック`);
 
     try {
-      await waitForCondition(() => !findModalByTitle(titleText), 2000, 60);
+      await waitForCondition(() => !findModalByTitle(titleText), 3000, 100);
       log(`モーダル「${titleText}」を閉じました ✓`);
       return true;
     } catch (e) {
@@ -634,7 +633,7 @@
   }
 
   async function closePublicExpenseHistoryModalIfPresent() {
-    const closed = await closeModalByTitle("公費更新履歴", 1500);
+    const closed = await closeModalByTitle("公費更新履歴", 2000);
     if (closed) return true;
     return false;
   }
@@ -777,172 +776,152 @@
     }
   }
 
-  /**
-   * カルテページから患者一覧（その日のリスト）に戻る
-   * 下書き保存後、ページがカルテのままなら戻る操作を行う
-   */
-  async function navigateBackToReceptionList() {
-    // 既に保険セルが見えるなら（一覧ページにいるなら）何もしない
-    if (findInsuranceCellInChartList()) {
-      log("既に受付一覧ページにいます");
-      return;
-    }
+  // ══════════════════════════════════════════════════════════════
+  // 患者番号抽出（患者一覧で正しい行を特定するため）
+  // ══════════════════════════════════════════════════════════════
+  function extractCurrentPatientChartNumber() {
+    // カルテページのヘッダーから患者番号を抽出する
+    // 表示例: "♦ 2656 高橋 里佳 タカハシ リカ 45歳 ♀"
+    // ♦マーカーの近くにある数字が患者番号
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let diamondPos = null;
+    const numbers = [];
 
-    // SPA内でhistory.back()を使って受付一覧に戻る（フルリロードなし・高速）
-    log("history.back() で受付一覧に戻ります");
-    history.back();
+    while (walker.nextNode()) {
+      const text = walker.currentNode.textContent.trim();
+      const el = walker.currentNode.parentElement;
+      if (!el || !isVisible(el)) continue;
+      if (el.closest('[class*="modal"], [role="dialog"]')) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.top > 170) continue;
 
-    // 一覧テーブルが表示されるのを待つ
-    try {
-      await waitForElement(() => document.querySelector("table tbody tr"), 6000, 100);
-      log("受付一覧に戻りました ✓");
-    } catch (e) {
-      // history.back()で戻れなかった場合、sessionStorageの日付で直接遷移
-      const storedDate = sessionStorage.getItem("jiritsu_reception_date");
-      if (storedDate) {
-        warn(`history.back()失敗。受付ページへ直接遷移します (date=${storedDate})`);
-        window.location.href = `/reception/${storedDate}`;
-        // フルリロード後のテーブル描画を待つ
-        await waitForElement(() => document.querySelector("table tbody tr"), 8000, 100).catch(() => {});
-      } else {
-        warn("受付一覧に戻れません");
+      if (text.includes("♦")) {
+        diamondPos = { top: rect.top, left: rect.left };
+      }
+      if (/^\d{1,6}$/.test(text)) {
+        numbers.push({ text, top: rect.top, left: rect.left });
       }
     }
 
-    // 正しい日付の受付ページにいるか検証
-    const storedDate = sessionStorage.getItem("jiritsu_reception_date");
-    if (storedDate) {
-      const currentPath = location.pathname;
-      if (!currentPath.includes(storedDate)) {
-        log(`日付不一致: 現在=${currentPath}, 期待=${storedDate} → 正しいページへ遷移`);
-        window.location.href = `/reception/${storedDate}`;
-        await waitForElement(() => document.querySelector("table tbody tr"), 8000, 100).catch(() => {});
+    // ♦と同じ行（Y差<30px）にある数字を優先
+    if (diamondPos && numbers.length > 0) {
+      const sameRow = numbers.filter(
+        (n) => Math.abs(n.top - diamondPos.top) < 30
+      );
+      if (sameRow.length > 0) {
+        sameRow.sort((a, b) => a.left - b.left);
+        debug(`extractCurrentPatientChartNumber: ♦近傍 "${sameRow[0].text}" (y=${sameRow[0].top})`);
+        return sameRow[0].text;
       }
     }
-  }
 
-  /**
-   * 患者一覧テーブルから指定患者番号の行を探し、その保険セルを返す
-   * @param {string|null} patientNumber - 患者番号（例: "2656"）
-   */
-  function findInsuranceCellInChartList(patientNumber) {
-    // 4列目（患者番号列）で完全一致 → その行の7列目（保険セル）を返す
-    const rows = document.querySelectorAll("table tbody tr");
-    for (const row of rows) {
-      if (!isVisible(row)) continue;
-      const cells = row.querySelectorAll("td");
-      if (cells.length < 7) continue;
-      const cellText = cells[3].textContent.trim();
-      if (cellText === patientNumber) {
-        log(`患者番号列で ${patientNumber} を発見 → 保険セル(7列目)を返す`);
-        return cells[6];
-      }
+    // フォールバック: 最上部の数字
+    if (numbers.length > 0) {
+      numbers.sort((a, b) => a.top - b.top);
+      debug(`extractCurrentPatientChartNumber: fallback "${numbers[0].text}" (y=${numbers[0].top})`);
+      return numbers[0].text;
     }
-    warn(`患者番号 ${patientNumber} が患者番号列(4列目)に見つかりません`);
+
+    warn("患者番号を抽出できません");
     return null;
   }
 
   /**
-   * 患者一覧の保険セルをクリックして予約編集モーダルを開く
-   * @param {string|null} patientNumber - 患者番号
+   * カルテページから患者一覧（その日のリスト）に戻る
+   * 下書き保存後、ページがカルテのままなら戻る操作を行う
    */
-  async function clickInsuranceCellInChartList(patientNumber) {
-    const cell = await waitForElement(() => findInsuranceCellInChartList(patientNumber), 8000).catch(() => null);
-    if (!cell) throw new Error(`受付一覧で患者${patientNumber || ""}の保険セルが見つかりません`);
-
-    const row = cell.closest("tr");
-    log(`受付一覧の保険セルを発見（患者番号: ${patientNumber || "不明"}）`);
-
-    // ★ 重要: セル(td)をクリックすると患者ページに遷移してしまうため、edit-iconボタンを最優先
-
-    // 方法1: セル内のedit-iconボタンを .click() でクリック（最優先）
-    const editBtn = cell.querySelector(SELECTORS.chartListInsuranceEditButton);
-    if (editBtn) {
-      editBtn.click();
-      log("edit-iconボタンを .click() でクリック");
-      try {
-        await waitForElement(() => findModalByTitle("予約編集"), 3000);
-        log("予約編集モーダルが開きました ✓");
-        return;
-      } catch (_) {
-        // dispatchEventでリトライ
-        safeClick(editBtn);
-        log("edit-iconボタンを dispatchEvent でリトライ");
-        try {
-          await waitForElement(() => findModalByTitle("予約編集"), 2000);
-          log("予約編集モーダルが開きました ✓");
-          return;
-        } catch (__) {}
-      }
+  async function navigateBackToPatientList() {
+    // 既に保険セルが見えるなら（一覧ページにいるなら）何もしない
+    if (findInsuranceCellInChartList()) {
+      log("既に患者一覧ページにいます");
+      return;
     }
 
-    // 方法2: SVGパスで鉛筆ボタンを探してクリック
-    const editSvgBtn = findButtonBySvgSelector(SELECTORS.editIconPath, cell);
-    if (editSvgBtn && editSvgBtn !== editBtn) {
-      editSvgBtn.click();
-      log("SVGパスで見つけた編集ボタンをクリック");
-      try {
-        await waitForElement(() => findModalByTitle("予約編集"), 3000);
-        log("予約編集モーダルが開きました ✓");
-        return;
-      } catch (_) {}
-    }
+    // カルテページにいる場合、ブラウザの戻るボタンで一覧に戻る
+    // URLパターン: /karte/patients/... → 戻ると /reception/... or 日別一覧
+    log("history.back() で患者一覧に戻ります");
+    history.back();
 
-    // 方法3: 同じ行内のSVG鉛筆ボタンを探す
-    if (row) {
-      const svgBtns = Array.from(row.querySelectorAll("button, [role='button']"))
-        .filter(b => isVisible(b) && b.querySelector("svg") && b !== editBtn && b !== editSvgBtn);
-      for (const btn of svgBtns) {
-        if (isLikelyEditButton(btn)) {
-          btn.click();
-          log("行内の編集SVGボタンをクリック");
-          try {
-            await waitForElement(() => findModalByTitle("予約編集"), 2000);
-            log("予約編集モーダルが開きました ✓");
-            return;
-          } catch (_) {
-            closeUnexpectedModalIfNeeded();
-            await sleep(200);
-          }
+    // 一覧が表示されるのを待つ
+    try {
+      await waitForElement(() => findInsuranceCellInChartList(), 8000, 150);
+      log("患者一覧に戻りました ✓");
+    } catch (e) {
+      // 戻れなかった場合、もう一度試す
+      warn("患者一覧が表示されません。もう一度戻ります...");
+      history.back();
+      await waitForElement(() => findInsuranceCellInChartList(), 8000, 150).catch(() => {});
+    }
+  }
+
+  /**
+   * 患者一覧テーブルから指定患者番号の行を探し、その保険セル(7列目)を返す
+   * @param {string|null} patientNumber - 患者番号（例: "2656"）。nullなら従来の先頭行フォールバック
+   */
+  function findInsuranceCellInChartList(patientNumber) {
+    // 患者番号が指定されている場合、4列目で完全一致 → その行の7列目を返す
+    if (patientNumber) {
+      const rows = document.querySelectorAll("table tbody tr");
+      for (const row of rows) {
+        if (!isVisible(row)) continue;
+        const cells = row.querySelectorAll("td");
+        if (cells.length < 7) continue;
+        const cellText = cells[3].textContent.trim();
+        if (cellText === patientNumber) {
+          log(`患者番号列で ${patientNumber} を発見 → 保険セル(7列目)を返す`);
+          return cells[6];
         }
       }
+      warn(`患者番号 ${patientNumber} が患者番号列(4列目)に見つかりません`);
+      return null;
     }
 
-    // 方法4（最終手段）: セル自体をクリック（ページ遷移の恐れあり）
-    warn("edit-iconボタンで予約編集が開きません。セル自体をクリックします（ページ遷移の恐れあり）");
-    safeClick(cell);
-    log("保険セルをクリック（最終手段）");
-    try {
-      await waitForElement(() => findModalByTitle("予約編集"), 2000);
-      log("予約編集モーダルが開きました ✓");
-      return;
-    } catch (_) {}
+    // 患者番号なしの場合は従来ロジック（navigateBackToPatientList の存在チェック用）
+    const directCell = queryVisible(SELECTORS.chartListInsuranceCell);
+    if (directCell) return directCell;
 
-    throw new Error("予約編集モーダルが開きません。手動で保険セルの鉛筆アイコンをクリックしてください。");
+    const directEditBtn = queryVisible(SELECTORS.chartListInsuranceEditButton);
+    if (directEditBtn) return directEditBtn.closest("td");
+
+    const cells = Array.from(document.querySelectorAll("td")).filter(isVisible);
+    for (const cell of cells) {
+      if (!cell.querySelector(SELECTORS.chartListInsuranceEditButton)) continue;
+      const text = cell.textContent.trim();
+      if (text.includes("国保") || text.includes("保険")) return cell;
+    }
+
+    return null;
+  }
+
+  async function clickInsuranceCellInChartList(patientNumber) {
+    const cell = await waitForElement(() => findInsuranceCellInChartList(patientNumber), 6000).catch(() => null);
+    if (!cell) throw new Error(`カルテ一覧の保険セルが見つかりません（患者番号: ${patientNumber || "不明"}）`);
+
+    safeClick(cell);
+    log("カルテ一覧の保険セルをクリック");
+
+    // 予約編集モーダルが開くか短時間待つ
+    try {
+      await waitForElement(() => findModalByTitle("予約編集"), 1500);
+    } catch (_) {
+      // 開かなければ編集アイコンもクリック
+      const editBtn = cell.querySelector(SELECTORS.chartListInsuranceEditButton);
+      if (editBtn) {
+        safeClick(editBtn);
+        log("保険セル内の編集アイコンもクリック");
+      }
+    }
   }
 
   /**
    * 予約編集モーダルで公費1に21(自立支援)を選択し、更新ボタンを押す
    */
-  async function selectKouhi1InReservationEditAndUpdate(patientChartNumber, patientName) {
+  async function selectKouhi1InReservationEditAndUpdate() {
     log("STEP: 予約編集モーダルで公費1に自立仮番をセット");
 
     // 予約編集モーダルが開くのを待つ
     const modal = await waitForElement(() => findModalByTitle("予約編集"), 5000).catch(() => null);
     if (!modal) throw new Error("予約編集モーダルが見つかりません");
-
-    // 安全チェック: モーダル内の患者名が正しいか確認（患者名で照合）
-    if (patientName) {
-      const modalText = modal.textContent || "";
-      if (!modalText.includes(patientName)) {
-        warn(`予約編集モーダルに患者名「${patientName}」が含まれていません！別の患者の可能性があります。`);
-        showToast(`安全のため予約編集をスキップします（患者名不一致: ${patientName}）`, "error");
-        const cancelBtn = findButtonByText("キャンセル", modal);
-        if (cancelBtn) safeClick(cancelBtn);
-        return;
-      }
-      log(`患者名「${patientName}」をモーダル内で確認 ✓`);
-    }
 
     // 公費1の select を探す
     // 方法1: name="expenseAndBurden1" で直接探す
@@ -1112,7 +1091,7 @@
 
     // blur で確定
     inputEl.dispatchEvent(new Event("blur", { bubbles: true }));
-    await sleep(30);
+    await sleep(50);
 
     // 値が入ったか確認（和暦変換されている場合も成功とみなす）
     const afterVal = inputEl.value;
@@ -1131,7 +1110,7 @@
     inputEl.focus();
     setNativeValue(inputEl, isoVal);
     inputEl.dispatchEvent(new Event("blur", { bubbles: true }));
-    await sleep(30);
+    await sleep(50);
 
     const afterVal2 = inputEl.value;
     if (afterVal2 && afterVal2.length > 0 && afterVal2 !== inputEl.placeholder) {
@@ -1147,7 +1126,7 @@
 
     // input をクリックしてカレンダーを開く
     safeClick(inputEl);
-    await sleep(50);
+    await sleep(80);
 
     // カレンダーポップアップを探す
     const calendarOk = await navigateCalendar(dateObj, label);
@@ -1240,7 +1219,7 @@
 
       if (navBtn) {
         safeClick(navBtn);
-        await sleep(30);
+        await sleep(50);
       } else {
         debug(`  ${label}: カレンダーのナビゲーションボタンが見つかりません`);
         return false;
@@ -1394,89 +1373,6 @@
     return false;
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // 患者番号抽出（患者一覧で正しい行を特定するため）
-  // ══════════════════════════════════════════════════════════════
-  function extractCurrentPatientChartNumber() {
-    // カルテページのヘッダーから患者番号を抽出する
-    // 表示例: "♦ 2656 高橋 里佳 タカハシ リカ 45歳 ♀"
-    // ♦マーカーの近くにある数字が患者番号
-
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    let diamondPos = null;
-    const numbers = [];
-
-    while (walker.nextNode()) {
-      const text = walker.currentNode.textContent.trim();
-      const el = walker.currentNode.parentElement;
-      if (!el || !isVisible(el)) continue;
-      if (el.closest('[class*="modal"], [role="dialog"]')) continue;
-      const rect = el.getBoundingClientRect();
-      if (rect.top > 170) continue;
-
-      if (text.includes("♦")) {
-        diamondPos = { top: rect.top, left: rect.left };
-      }
-      if (/^\d{1,6}$/.test(text)) {
-        numbers.push({ text, top: rect.top, left: rect.left });
-      }
-    }
-
-    // ♦と同じ行（Y差<30px）にある数字を優先
-    if (diamondPos && numbers.length > 0) {
-      const sameRow = numbers.filter(
-        (n) => Math.abs(n.top - diamondPos.top) < 30
-      );
-      if (sameRow.length > 0) {
-        sameRow.sort((a, b) => a.left - b.left);
-        debug(
-          `extractCurrentPatientChartNumber: ♦近傍 "${sameRow[0].text}" (y=${sameRow[0].top})`
-        );
-        return sameRow[0].text;
-      }
-    }
-
-    // フォールバック: 最上部の数字
-    if (numbers.length > 0) {
-      numbers.sort((a, b) => a.top - b.top);
-      debug(
-        `extractCurrentPatientChartNumber: fallback "${numbers[0].text}" (y=${numbers[0].top})`
-      );
-      return numbers[0].text;
-    }
-
-    warn("患者番号を抽出できません");
-    return null;
-  }
-
-  /**
-   * カルテページのヘッダーから患者名（漢字）を抽出する
-   * 表示例: "♦ 2656 高橋 里佳 タカハシ リカ 45歳 ♀"
-   * → "高橋" を返す（姓のみ。予約編集モーダルの患者名と照合するため）
-   */
-  function extractCurrentPatientName() {
-    // ページ上部(Y < 170px)の漢字テキストを探す（患者番号の右隣にある患者名）
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    const candidates = [];
-    while (walker.nextNode()) {
-      const text = walker.currentNode.textContent.trim();
-      // 漢字2-4文字（姓として妥当な長さ）
-      if (!/^[\u4e00-\u9fff]{1,5}$/.test(text)) continue;
-      const el = walker.currentNode.parentElement;
-      if (!el || !isVisible(el)) continue;
-      if (el.closest('[class*="modal"], [role="dialog"]')) continue;
-      const rect = el.getBoundingClientRect();
-      if (rect.top > 170) continue;
-      candidates.push({ text, top: rect.top, left: rect.left });
-    }
-    if (candidates.length > 0) {
-      candidates.sort((a, b) => a.top - b.top || a.left - b.left);
-      debug(`extractCurrentPatientName: "${candidates[0].text}" (y=${candidates[0].top})`);
-      return candidates[0].text;
-    }
-    return null;
-  }
-
   async function waitForPhase2Ready() {
     log("Phase 2 準備: 公費一覧の反映待ち...");
     try {
@@ -1491,7 +1387,7 @@
     try {
       await waitForCondition(
         () => !!findTextElement("1回あたり", modal) || !!findTextElement("1月あたり", modal),
-        600
+        1000
       );
     } catch (_) {}
   }
@@ -1567,7 +1463,7 @@
     log("＋ボタンをクリック");
 
     // 公費追加モーダルが開くのを待つ
-    const modal = await waitForElement(() => findModalByTitle("公費追加"), 3000);
+    const modal = await waitForElement(() => findModalByTitle("公費追加"), 5000);
     log("公費追加モーダルが開きました");
     return modal;
   }
@@ -1620,7 +1516,7 @@
         if (!kouhiSelect) return false;
         const sel = kouhiSelect.options[kouhiSelect.selectedIndex]?.textContent || "";
         return sel.includes(KOUHI_TYPE_TEXT);
-      }, 1500);
+      }, 2000);
       log(`  C: 公費の種類 ← 自動選択済み ✓`);
     } catch (_) {
       kouhiSelect = kouhiSelect || modal.querySelector(SELECTORS.kouhiTypeSelect) || findByLabel("公費の種類", "select", modal);
@@ -1838,12 +1734,12 @@
         // 確認ダイアログが出ていたら即座にOK
         handleCustomConfirmDialog();
         return !findModalByTitle("公費追加");
-      }, 3000);
+      }, 6000);
       log("公費追加モーダルが閉じました ✓");
     } catch (_) {
       await handleCustomConfirmDialog();
       try {
-        await waitForCondition(() => !findModalByTitle("公費追加"), 1500);
+        await waitForCondition(() => !findModalByTitle("公費追加"), 3000);
       } catch (__) {
         warn("モーダルが閉じません。手動で確認してください。");
         showToast("登録完了を確認してください", "warn");
@@ -1869,7 +1765,7 @@
     // Method 0: prefer the edit button on the newly added 21000000 row.
     const publicRowEditBtn = await waitForElement(
       () => findPublicExpenseRowEditButton(TEMP_FUTANSHA),
-      1500
+      3000
     ).catch(() => null);
     const publicRowModal = await tryOpenChartUpdateFromButton(
       publicRowEditBtn,
@@ -1879,7 +1775,7 @@
     log("STEP: カルテ更新モーダルを開く（Phase 2）");
 
     /** クリック→カルテ更新モーダル出現を待つ共通処理 (waitTimeMs以内) */
-    async function clickAndWaitForChartModal(target, label, waitMs = 2000) {
+    async function clickAndWaitForChartModal(target, label, waitMs = 1500) {
       safeClick(target);
       log(`${label} をクリック`);
       try {
@@ -1892,7 +1788,7 @@
       if (any) {
         const cb = any.querySelector('[aria-label="close"], [class*="close"]')
           || findButtonByText("×", any) || findButtonByText("✕", any);
-        if (cb) { safeClick(cb); await sleep(100); }
+        if (cb) { safeClick(cb); await sleep(80); }
       }
       return null;
     }
@@ -1966,20 +1862,6 @@
     log("STEP: 公費1に自立仮番をセット");
     const modal = findModalByTitle("カルテ更新");
     if (!modal) throw new Error("カルテ更新モーダルが見つかりません");
-
-    // selectのoptionに21000000が現れるまで待つ（非同期で読み込まれる場合がある）
-    try {
-      await waitForCondition(() => {
-        const sels = modal.querySelectorAll("select");
-        for (const sel of sels) {
-          if (findTemporaryJiritsuOption(sel)) return true;
-        }
-        return false;
-      }, 3000, { root: modal, observeAttributes: true });
-      log("公費selectにオプションが読み込まれました ✓");
-    } catch (_) {
-      warn("公費selectに21000000オプションが見つかりません（タイムアウト）。現在のoptionで続行します。");
-    }
 
     const selects = modal.querySelectorAll("select");
     debug(`カルテ更新モーダル内の select: ${selects.length} 個`);
@@ -2150,68 +2032,17 @@
       await waitForCondition(() => {
         handleCustomConfirmDialog();
         return !findModalByTitle("カルテ更新");
-      }, 3000);
+      }, 5000);
       log("カルテ更新完了 ✓");
     } catch (_) {
       await handleCustomConfirmDialog();
       try {
-        await waitForCondition(() => !findModalByTitle("カルテ更新"), 1500);
+        await waitForCondition(() => !findModalByTitle("カルテ更新"), 3000);
       } catch (__) {
         warn("カルテ更新モーダルが閉じません。手動で確認してください。");
         showToast("カルテ更新を確認してください", "warn");
       }
     }
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // Phase 3: 受付一覧の予約公費更新（localStorage経由で保留→ページ遷移後に実行）
-  // ══════════════════════════════════════════════════════════════
-
-  /**
-   * 受付ページ初期化時に、保留中の予約公費更新があれば実行する。
-   * Phase 2 完了後に localStorage に保存された患者番号を使い、
-   * 受付一覧の該当患者の予約編集モーダルを開いて公費1を設定する。
-   */
-  async function processPendingReservationUpdate() {
-    const raw = localStorage.getItem(PENDING_RESERVATION_KEY);
-    if (!raw) return false;
-
-    let pending;
-    try {
-      pending = JSON.parse(raw);
-    } catch (_) {
-      localStorage.removeItem(PENDING_RESERVATION_KEY);
-      return false;
-    }
-    localStorage.removeItem(PENDING_RESERVATION_KEY);
-
-    // 60秒以上前のデータは期限切れ
-    if (Date.now() - pending.timestamp > 60000) return false;
-    // 受付ページでなければ無視
-    if (!/\/reception\//.test(location.pathname)) return false;
-
-    log("========== 保留中の予約公費更新を処理 ==========");
-    log(`患者番号: ${pending.patientNumber}`);
-    showToast("予約の公費を更新中...", "info");
-
-    enableAutoConfirm();
-    try {
-      // テーブルに患者行が描画されるまで待つ（患者番号のセルが見えるまで）
-      await waitForElement(() => findInsuranceCellInChartList(pending.patientNumber), 8000);
-      await sleep(200);
-
-      await clickInsuranceCellInChartList(pending.patientNumber);
-      await selectKouhi1InReservationEditAndUpdate(pending.patientNumber);
-
-      log("========== 予約公費更新 完了 ==========");
-      showToast("全工程完了！予約の公費1を更新しました。", "success");
-    } catch (err) {
-      error("予約更新エラー:", err.message);
-      showToast(`予約の公費1更新に失敗: ${err.message}。手動で予約編集してください。`, "error");
-    } finally {
-      disableAutoConfirm();
-    }
-    return true;
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -2237,12 +2068,6 @@
           return;
         }
       }
-
-      // 患者番号・患者名を抽出（Phase 3で正しい患者を特定・検証するため）
-      step = "患者番号の抽出";
-      const patientChartNumber = extractCurrentPatientChartNumber();
-      const patientName = extractCurrentPatientName();
-      log(`患者番号: ${patientChartNumber || "抽出失敗"}, 患者名: ${patientName || "抽出失敗"}`);
 
       // 生活保護判定
       step = "生活保護判定";
@@ -2289,29 +2114,25 @@
         await submitChartUpdate();
 
         step = "カルテを一時保存";
+        // 一時保存前に患者番号を抽出（一覧に戻ってからでは取得できない）
+        const patientChartNumber = extractCurrentPatientChartNumber();
+        log(`現在の患者番号: ${patientChartNumber || "不明"}`);
+
         await clickChartTemporarySaveButton();
 
+        // 下書き保存後、患者一覧に戻る
+        step = "患者一覧に戻る";
+        log("患者一覧に戻ります...");
+        await navigateBackToPatientList();
+
+        step = "カルテ一覧の保険セルを開く";
+        await clickInsuranceCellInChartList(patientChartNumber);
+
+        step = "予約編集で公費1を選択し更新";
+        await selectKouhi1InReservationEditAndUpdate();
+
         log("===== Phase 2（カルテ更新）完了 =====");
-
-        // Phase 3: 受付一覧に戻って予約の公費1を更新
-        // SPA内のhistory.back()でページ遷移なしに戻る（フルリロードより高速・確実）
-        step = "受付一覧に戻る";
-        log("===== Phase 3（予約公費更新）開始 =====");
-        showToast("受付一覧で予約の公費を更新します...", "info");
-
-        await navigateBackToReceptionList();
-        await sleep(800);
-
-        step = "予約の公費1を更新";
-        if (patientChartNumber) {
-          await clickInsuranceCellInChartList(patientChartNumber);
-          await selectKouhi1InReservationEditAndUpdate(patientChartNumber, patientName);
-          log("===== Phase 3（予約公費更新）完了 =====");
-          showToast("全工程完了！予約の公費1を更新しました。", "success");
-        } else {
-          warn("患者番号が不明のため予約の公費更新をスキップします");
-          showToast("カルテ更新完了。受付一覧の公費は手動で予約編集してください。", "warn");
-        }
+        showToast("全工程が完了しました！", "success");
       } catch (err2) {
         warn(`Phase 2 エラー [${step}]: ${err2.message}`);
         showToast(`公費追加は完了。カルテ更新は手動で行ってください: ${err2.message}`, "warn");
@@ -2415,11 +2236,6 @@
     window.setInterval(() => {
       const urlChanged = location.href !== lastLocationHref;
       if (urlChanged) lastLocationHref = location.href;
-      // 受付ページにいるとき、日付をsessionStorageに記憶（翌日受付など「今日」と異なる場合に必要）
-      const receptionMatch = location.pathname.match(/\/reception\/(\d{8})/);
-      if (receptionMatch) {
-        sessionStorage.setItem("jiritsu_reception_date", receptionMatch[1]);
-      }
       if (urlChanged || !document.getElementById(BTN_ID)) {
         scheduleEnsureButton(urlChanged ? 0 : ENSURE_BUTTON_DEBOUNCE_MS);
       }
@@ -2441,27 +2257,9 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v3.8.1 初期化");
+    log("v3.5.0 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
-    // 受付ページの日付を即座に記憶
-    const receptionMatch = location.pathname.match(/\/reception\/(\d{8})/);
-    if (receptionMatch) {
-      sessionStorage.setItem("jiritsu_reception_date", receptionMatch[1]);
-    }
-    // 保留中の予約公費更新がある場合は即座に処理開始（テーブル待ちは内部で行う）
-    const hasPending = localStorage.getItem(PENDING_RESERVATION_KEY);
-    if (hasPending) {
-      setTimeout(async () => {
-        await processPendingReservationUpdate();
-        ensureButton();
-        startObserver();
-      }, 300);
-    } else {
-      setTimeout(() => {
-        ensureButton();
-        startObserver();
-      }, 1200);
-    }
+    setTimeout(() => { ensureButton(); startObserver(); }, 1500);
   }
 
   if (document.readyState === "loading") {

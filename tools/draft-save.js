@@ -27,12 +27,33 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function getTodayDateStr() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function loadProcessed() {
   try {
     if (fs.existsSync(PROCESSED_FILE)) {
-      const data = JSON.parse(fs.readFileSync(PROCESSED_FILE, "utf-8"));
-      log(`処理済みデータ読み込み: ${data.length} 件`);
-      return new Set(data);
+      const raw = JSON.parse(fs.readFileSync(PROCESSED_FILE, "utf-8"));
+      // 新形式: { date: "YYYY-MM-DD", items: [...] }
+      if (raw && typeof raw === "object" && raw.date && Array.isArray(raw.items)) {
+        if (raw.date === getTodayDateStr()) {
+          log(`処理済みデータ読み込み: ${raw.items.length} 件 (${raw.date})`);
+          return new Set(raw.items);
+        } else {
+          log(`前日分の処理済みデータを破棄 (${raw.date} → ${getTodayDateStr()})`);
+          return new Set();
+        }
+      }
+      // 旧形式: 配列のみ → 日付不明なので破棄
+      if (Array.isArray(raw)) {
+        log(`旧形式の processed.json を破棄（日付情報なし）`);
+        return new Set();
+      }
     }
   } catch (e) {
     console.warn("processed.json の読み込みに失敗:", e.message);
@@ -41,7 +62,8 @@ function loadProcessed() {
 }
 
 function saveProcessed(set) {
-  fs.writeFileSync(PROCESSED_FILE, JSON.stringify([...set], null, 2), "utf-8");
+  const data = { date: getTodayDateStr(), items: [...set] };
+  fs.writeFileSync(PROCESSED_FILE, JSON.stringify(data, null, 2), "utf-8");
 }
 
 // ── メイン処理 ──────────────────────────────────
