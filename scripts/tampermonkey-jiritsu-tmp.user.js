@@ -967,21 +967,6 @@
     const modal = await waitForElement(() => findModalByTitle("予約編集"), 5000).catch(() => null);
     if (!modal) throw new Error("予約編集モーダルが見つかりません");
 
-    // 安全チェック: モーダル内の患者名が正しいか確認
-    if (patientChartNumber) {
-      const modalText = modal.textContent || "";
-      if (!modalText.includes(patientChartNumber)) {
-        // 患者番号が見つからない場合、患者名でも照合を試みるが
-        // 確実に間違った患者なら中断する
-        warn(`予約編集モーダルに患者番号 ${patientChartNumber} が含まれていません！別の患者の可能性があります。`);
-        showToast(`安全のため予約編集をスキップします（患者番号不一致: ${patientChartNumber}）`, "error");
-        // モーダルを閉じる
-        const cancelBtn = findButtonByText("キャンセル", modal);
-        if (cancelBtn) safeClick(cancelBtn);
-        return;
-      }
-    }
-
     // 公費1の select を探す
     // 方法1: name="expenseAndBurden1" で直接探す
     let kouhi1Select = modal.querySelector('select[name="expenseAndBurden1"]');
