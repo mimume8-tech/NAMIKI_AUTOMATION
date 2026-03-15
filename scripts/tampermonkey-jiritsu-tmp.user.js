@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      3.8.0
+// @version      3.8.1
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -19,7 +19,7 @@
   // ══════════════════════════════════════════════════════════════
   const DEBUG = false;
   const INFO_LOG = DEBUG || window.localStorage.getItem("jiritsu_tmp_log") === "1";
-  const DEFAULT_WAIT_INTERVAL = 30;
+  const DEFAULT_WAIT_INTERVAL = 40;
   const ENSURE_BUTTON_DEBOUNCE_MS = 80;
   const URL_WATCH_INTERVAL_MS = 1000;
 
@@ -422,7 +422,7 @@
     if (el.value === value) { log(`  ${label}: React fiber 成功`); return true; }
     // fiber は非同期レンダリングの場合があるので少し待つ
     if (fiberOk) {
-      await sleep(30);
+      await sleep(50);
       if (el.value === value) { log(`  ${label}: React fiber 成功（遅延）`); return true; }
     }
 
@@ -624,7 +624,7 @@
     log(`モーダル「${titleText}」を閉じるボタンをクリック`);
 
     try {
-      await waitForCondition(() => !findModalByTitle(titleText), 1500, 50);
+      await waitForCondition(() => !findModalByTitle(titleText), 2000, 60);
       log(`モーダル「${titleText}」を閉じました ✓`);
       return true;
     } catch (e) {
@@ -634,7 +634,7 @@
   }
 
   async function closePublicExpenseHistoryModalIfPresent() {
-    const closed = await closeModalByTitle("公費更新履歴", 800);
+    const closed = await closeModalByTitle("公費更新履歴", 1500);
     if (closed) return true;
     return false;
   }
@@ -646,13 +646,13 @@
     log(`${reason} をクリック`);
 
     try {
-      const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 1000);
+      const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 2000);
       log(`カルテ更新モーダルが開きました（${reason}）`);
       return modal;
     } catch (_) {}
 
     if (closeUnexpectedModalIfNeeded()) {
-      await sleep(50);
+      await sleep(100);
     }
 
     return null;
@@ -736,8 +736,8 @@
   async function clickChartTemporarySaveButton() {
     const saveBtn = await waitForElement(
       () => queryVisible(SELECTORS.chartTempSaveButton) || findButtonBySvgSelector(SELECTORS.saveIconPath),
-      3000,
-      50
+      6000,
+      100
     ).catch(() => null);
 
     if (!saveBtn) throw new Error("一時保存ボタンが見つかりません");
@@ -759,7 +759,7 @@
     // 「下書き保存」ボタンを探す（ダイアログ内）
     const draftBtn = await waitForElement(() => {
       return findButtonByText("下書き保存");
-    }, 1000).catch(() => null);
+    }, 2000).catch(() => null);
 
     if (draftBtn) {
       safeClick(draftBtn);
@@ -767,7 +767,7 @@
 
       // ダイアログが閉じるのを待つ
       try {
-        await waitForCondition(() => !findButtonByText("下書き保存"), 2000, 50);
+        await waitForCondition(() => !findButtonByText("下書き保存"), 5000, 100);
         log("下書き保存ダイアログが閉じました ✓");
       } catch (e) {
         warn("下書き保存ダイアログがまだ開いている可能性があります");
@@ -795,13 +795,13 @@
 
     // 一覧が表示されるのを待つ
     try {
-      await waitForElement(() => findInsuranceCellInChartList(), 4000, 80);
+      await waitForElement(() => findInsuranceCellInChartList(), 5000, 100);
       log("患者一覧に戻りました ✓");
     } catch (e) {
       // 戻れなかった場合、もう一度試す
       warn("患者一覧が表示されません。もう一度戻ります...");
       history.back();
-      await waitForElement(() => findInsuranceCellInChartList(), 4000, 80).catch(() => {});
+      await waitForElement(() => findInsuranceCellInChartList(), 5000, 100).catch(() => {});
     }
   }
 
@@ -948,7 +948,7 @@
     log("STEP: 予約編集モーダルで公費1に自立仮番をセット");
 
     // 予約編集モーダルが開くのを待つ
-    const modal = await waitForElement(() => findModalByTitle("予約編集"), 2000).catch(() => null);
+    const modal = await waitForElement(() => findModalByTitle("予約編集"), 5000).catch(() => null);
     if (!modal) throw new Error("予約編集モーダルが見つかりません");
 
     // 安全チェック: モーダル内の患者名が正しいか確認
@@ -1016,12 +1016,12 @@
 
     // モーダルが閉じるのを待つ（確認ダイアログが出た場合も対応）
     try {
-      await waitForCondition(() => !findModalByTitle("予約編集"), 2000);
+      await waitForCondition(() => !findModalByTitle("予約編集"), 4000);
       log("予約編集モーダルが閉じました ✓");
     } catch (_) {
       await handleCustomConfirmDialog();
       try {
-        await waitForCondition(() => !findModalByTitle("予約編集"), 1500);
+        await waitForCondition(() => !findModalByTitle("予約編集"), 3000);
       } catch (__) {
         warn("予約編集モーダルが閉じません。手動で確認してください。");
         showToast("予約編集を確認してください", "warn");
@@ -1134,7 +1134,7 @@
 
     // blur で確定
     inputEl.dispatchEvent(new Event("blur", { bubbles: true }));
-    await sleep(20);
+    await sleep(30);
 
     // 値が入ったか確認（和暦変換されている場合も成功とみなす）
     const afterVal = inputEl.value;
@@ -1153,7 +1153,7 @@
     inputEl.focus();
     setNativeValue(inputEl, isoVal);
     inputEl.dispatchEvent(new Event("blur", { bubbles: true }));
-    await sleep(20);
+    await sleep(30);
 
     const afterVal2 = inputEl.value;
     if (afterVal2 && afterVal2.length > 0 && afterVal2 !== inputEl.placeholder) {
@@ -1169,7 +1169,7 @@
 
     // input をクリックしてカレンダーを開く
     safeClick(inputEl);
-    await sleep(30);
+    await sleep(50);
 
     // カレンダーポップアップを探す
     const calendarOk = await navigateCalendar(dateObj, label);
@@ -1262,7 +1262,7 @@
 
       if (navBtn) {
         safeClick(navBtn);
-        await sleep(20);
+        await sleep(30);
       } else {
         debug(`  ${label}: カレンダーのナビゲーションボタンが見つかりません`);
         return false;
@@ -1469,7 +1469,7 @@
     try {
       await waitForCondition(
         () => !!findTextElement("1回あたり", modal) || !!findTextElement("1月あたり", modal),
-        500
+        600
       );
     } catch (_) {}
   }
@@ -1598,7 +1598,7 @@
         if (!kouhiSelect) return false;
         const sel = kouhiSelect.options[kouhiSelect.selectedIndex]?.textContent || "";
         return sel.includes(KOUHI_TYPE_TEXT);
-      }, 1000);
+      }, 1500);
       log(`  C: 公費の種類 ← 自動選択済み ✓`);
     } catch (_) {
       kouhiSelect = kouhiSelect || modal.querySelector(SELECTORS.kouhiTypeSelect) || findByLabel("公費の種類", "select", modal);
@@ -1857,7 +1857,7 @@
     log("STEP: カルテ更新モーダルを開く（Phase 2）");
 
     /** クリック→カルテ更新モーダル出現を待つ共通処理 (waitTimeMs以内) */
-    async function clickAndWaitForChartModal(target, label, waitMs = 800) {
+    async function clickAndWaitForChartModal(target, label, waitMs = 2000) {
       safeClick(target);
       log(`${label} をクリック`);
       try {
@@ -1870,7 +1870,7 @@
       if (any) {
         const cb = any.querySelector('[aria-label="close"], [class*="close"]')
           || findButtonByText("×", any) || findButtonByText("✕", any);
-        if (cb) { safeClick(cb); await sleep(30); }
+        if (cb) { safeClick(cb); await sleep(100); }
       }
       return null;
     }
@@ -1933,7 +1933,7 @@
     for (const btn of allBtns) {
       if (!btn.querySelector("svg") || btn.offsetParent === null) continue;
       if (btn.closest('[class*="modal"], [role="dialog"]')) continue;
-      const m4 = await clickAndWaitForChartModal(btn, "総当たりSVG", 500);
+      const m4 = await clickAndWaitForChartModal(btn, "総当たりSVG", 1000);
       if (m4) return m4;
     }
 
@@ -2174,9 +2174,9 @@
 
     enableAutoConfirm();
     try {
-      // テーブルが描画されるまで待つ
-      await waitForElement(() => document.querySelector("table tbody tr"), 8000);
-      await sleep(1000);
+      // テーブルに患者行が描画されるまで待つ（患者番号のセルが見えるまで）
+      await waitForElement(() => findInsuranceCellInChartList(pending.patientNumber), 8000);
+      await sleep(200);
 
       await clickInsuranceCellInChartList(pending.patientNumber);
       await selectKouhi1InReservationEditAndUpdate(pending.patientNumber);
@@ -2422,19 +2422,27 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v3.8.0 初期化");
+    log("v3.8.1 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
     // 受付ページの日付を即座に記憶
     const receptionMatch = location.pathname.match(/\/reception\/(\d{8})/);
     if (receptionMatch) {
       sessionStorage.setItem("jiritsu_reception_date", receptionMatch[1]);
     }
-    setTimeout(async () => {
-      // 保留中の予約公費更新があれば先に処理
-      await processPendingReservationUpdate();
-      ensureButton();
-      startObserver();
-    }, 1200);
+    // 保留中の予約公費更新がある場合は即座に処理開始（テーブル待ちは内部で行う）
+    const hasPending = localStorage.getItem(PENDING_RESERVATION_KEY);
+    if (hasPending) {
+      setTimeout(async () => {
+        await processPendingReservationUpdate();
+        ensureButton();
+        startObserver();
+      }, 300);
+    } else {
+      setTimeout(() => {
+        ensureButton();
+        startObserver();
+      }, 1200);
+    }
   }
 
   if (document.readyState === "loading") {
