@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      3.7.0
+// @version      3.8.0
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -31,6 +31,7 @@
   const MONTHLY_LIMIT = "20000";          // 月上限円（非生活保護）
   const RATE_PERCENT = "10";              // 1回あたり上限%（非生活保護）
   const LIFE_PROTECTION_PREFIX = "12";    // 生活保護の負担者番号先頭
+  const PENDING_RESERVATION_KEY = "jiritsu_pending_reservation"; // 予約公費更新の保留状態用
 
   // ══════════════════════════════════════════════════════════════
   // セレクタ定数
@@ -866,23 +867,68 @@
    * @param {string|null} patientNumber - 患者番号
    */
   async function clickInsuranceCellInChartList(patientNumber) {
-    const cell = await waitForElement(() => findInsuranceCellInChartList(patientNumber), 3000).catch(() => null);
-    if (!cell) throw new Error(`カルテ一覧で患者${patientNumber || ""}の保険セルが見つかりません`);
+    const cell = await waitForElement(() => findInsuranceCellInChartList(patientNumber), 5000).catch(() => null);
+    if (!cell) throw new Error(`受付一覧で患者${patientNumber || ""}の保険セルが見つかりません`);
 
+    const row = cell.closest("tr");
+    log(`受付一覧の保険セルを発見（患者番号: ${patientNumber || "不明"}）`);
+
+    // 方法1: 保険セルをクリック
     safeClick(cell);
-    log(`カルテ一覧の保険セルをクリック（患者番号: ${patientNumber || "不明"}）`);
-
-    // 予約編集モーダルが開くか短時間待つ
+    log("保険セルをクリック");
     try {
-      await waitForElement(() => findModalByTitle("予約編集"), 800);
-    } catch (_) {
-      // 開かなければ編集アイコンもクリック
-      const editBtn = cell.querySelector(SELECTORS.chartListInsuranceEditButton);
-      if (editBtn) {
-        safeClick(editBtn);
-        log("保険セル内の編集アイコンもクリック");
+      await waitForElement(() => findModalByTitle("予約編集"), 2000);
+      log("予約編集モーダルが開きました ✓");
+      return;
+    } catch (_) {}
+
+    // 方法2: セル内のedit-iconボタン
+    const editBtnInCell = cell.querySelector(SELECTORS.chartListInsuranceEditButton);
+    if (editBtnInCell) {
+      safeClick(editBtnInCell);
+      log("保険セル内の編集アイコンをクリック");
+      try {
+        await waitForElement(() => findModalByTitle("予約編集"), 2000);
+        log("予約編集モーダルが開きました ✓");
+        return;
+      } catch (_) {}
+    }
+
+    // 方法3: 同じ行内のSVG鉛筆ボタンを探す
+    if (row) {
+      const svgBtns = Array.from(row.querySelectorAll("button, [role='button']"))
+        .filter(b => isVisible(b) && b.querySelector("svg"));
+      for (const btn of svgBtns) {
+        if (isLikelyEditButton(btn)) {
+          safeClick(btn);
+          log("行内の編集SVGボタンをクリック");
+          try {
+            await waitForElement(() => findModalByTitle("予約編集"), 1500);
+            log("予約編集モーダルが開きました ✓");
+            return;
+          } catch (_) {
+            closeUnexpectedModalIfNeeded();
+            await sleep(200);
+          }
+        }
       }
     }
+
+    // 方法4: 行の最初のセルをクリック（行選択で予約編集が開く場合）
+    if (row) {
+      const firstCell = row.querySelector("td");
+      if (firstCell && firstCell !== cell) {
+        safeClick(firstCell);
+        log("行の最初のセルをクリック");
+        try {
+          await waitForElement(() => findModalByTitle("予約編集"), 1500);
+          log("予約編集モーダルが開きました ✓");
+          return;
+        } catch (_) {}
+      }
+    }
+
+    throw new Error("予約編集モーダルが開きません。手動で保険セルをクリックしてください。");
   }
 
   /**
@@ -2086,6 +2132,57 @@
   }
 
   // ══════════════════════════════════════════════════════════════
+  // Phase 3: 受付一覧の予約公費更新（localStorage経由で保留→ページ遷移後に実行）
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * 受付ページ初期化時に、保留中の予約公費更新があれば実行する。
+   * Phase 2 完了後に localStorage に保存された患者番号を使い、
+   * 受付一覧の該当患者の予約編集モーダルを開いて公費1を設定する。
+   */
+  async function processPendingReservationUpdate() {
+    const raw = localStorage.getItem(PENDING_RESERVATION_KEY);
+    if (!raw) return false;
+
+    let pending;
+    try {
+      pending = JSON.parse(raw);
+    } catch (_) {
+      localStorage.removeItem(PENDING_RESERVATION_KEY);
+      return false;
+    }
+    localStorage.removeItem(PENDING_RESERVATION_KEY);
+
+    // 60秒以上前のデータは期限切れ
+    if (Date.now() - pending.timestamp > 60000) return false;
+    // 受付ページでなければ無視
+    if (!/\/reception\//.test(location.pathname)) return false;
+
+    log("========== 保留中の予約公費更新を処理 ==========");
+    log(`患者番号: ${pending.patientNumber}`);
+    showToast("予約の公費を更新中...", "info");
+
+    enableAutoConfirm();
+    try {
+      // テーブルが描画されるまで待つ
+      await waitForElement(() => document.querySelector("table tbody tr"), 8000);
+      await sleep(1000);
+
+      await clickInsuranceCellInChartList(pending.patientNumber);
+      await selectKouhi1InReservationEditAndUpdate(pending.patientNumber);
+
+      log("========== 予約公費更新 完了 ==========");
+      showToast("全工程完了！予約の公費1を更新しました。", "success");
+    } catch (err) {
+      error("予約更新エラー:", err.message);
+      showToast(`予約の公費1更新に失敗: ${err.message}。手動で予約編集してください。`, "error");
+    } finally {
+      disableAutoConfirm();
+    }
+    return true;
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // メインフロー
   // ══════════════════════════════════════════════════════════════
   async function main() {
@@ -2161,19 +2258,27 @@
         step = "カルテを一時保存";
         await clickChartTemporarySaveButton();
 
-        // 下書き保存後、患者一覧に戻る
-        step = "患者一覧に戻る";
-        log("患者一覧に戻ります...");
-        await navigateBackToPatientList();
-
-        step = "カルテ一覧の保険セルを開く";
-        await clickInsuranceCellInChartList(patientChartNumber);
-
-        step = "予約編集で公費1を選択し更新";
-        await selectKouhi1InReservationEditAndUpdate(patientChartNumber);
-
         log("===== Phase 2（カルテ更新）完了 =====");
-        showToast("全工程が完了しました！", "success");
+
+        // Phase 3: 受付一覧の予約公費更新
+        // history.back() は不安定なので、localStorage に保留状態を保存し
+        // 受付ページへ直接遷移 → ページ再初期化時に保留処理を実行する
+        step = "受付一覧へ遷移（予約公費更新）";
+        if (patientChartNumber) {
+          localStorage.setItem(PENDING_RESERVATION_KEY, JSON.stringify({
+            patientNumber: patientChartNumber,
+            timestamp: Date.now()
+          }));
+          const today2 = getTodayJST();
+          const receptionDateStr = `${today2.year}${String(today2.month).padStart(2, '0')}${String(today2.day).padStart(2, '0')}`;
+          log("予約更新を保留して受付ページに遷移します...");
+          showToast("受付一覧で予約の公費を更新します...", "info");
+          window.location.href = `/reception/${receptionDateStr}`;
+          return; // ページ遷移 → スクリプト再初期化で processPendingReservationUpdate が実行される
+        } else {
+          warn("患者番号が不明のため予約の公費更新をスキップします");
+          showToast("カルテ更新完了。受付一覧の公費は手動で予約編集してください。", "warn");
+        }
       } catch (err2) {
         warn(`Phase 2 エラー [${step}]: ${err2.message}`);
         showToast(`公費追加は完了。カルテ更新は手動で行ってください: ${err2.message}`, "warn");
