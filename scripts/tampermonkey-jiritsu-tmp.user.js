@@ -873,22 +873,36 @@
     const row = cell.closest("tr");
     log(`受付一覧の保険セルを発見（患者番号: ${patientNumber || "不明"}）`);
 
-    // 方法1: 保険セルをクリック
-    safeClick(cell);
-    log("保険セルをクリック");
-    try {
-      await waitForElement(() => findModalByTitle("予約編集"), 2000);
-      log("予約編集モーダルが開きました ✓");
-      return;
-    } catch (_) {}
+    // ★ 重要: セル(td)をクリックすると患者ページに遷移してしまうため、edit-iconボタンを最優先
 
-    // 方法2: セル内のedit-iconボタン
-    const editBtnInCell = cell.querySelector(SELECTORS.chartListInsuranceEditButton);
-    if (editBtnInCell) {
-      safeClick(editBtnInCell);
-      log("保険セル内の編集アイコンをクリック");
+    // 方法1: セル内のedit-iconボタンを .click() でクリック（最優先）
+    const editBtn = cell.querySelector(SELECTORS.chartListInsuranceEditButton);
+    if (editBtn) {
+      editBtn.click();
+      log("edit-iconボタンを .click() でクリック");
       try {
-        await waitForElement(() => findModalByTitle("予約編集"), 2000);
+        await waitForElement(() => findModalByTitle("予約編集"), 3000);
+        log("予約編集モーダルが開きました ✓");
+        return;
+      } catch (_) {
+        // dispatchEventでリトライ
+        safeClick(editBtn);
+        log("edit-iconボタンを dispatchEvent でリトライ");
+        try {
+          await waitForElement(() => findModalByTitle("予約編集"), 2000);
+          log("予約編集モーダルが開きました ✓");
+          return;
+        } catch (__) {}
+      }
+    }
+
+    // 方法2: SVGパスで鉛筆ボタンを探してクリック
+    const editSvgBtn = findButtonBySvgSelector(SELECTORS.editIconPath, cell);
+    if (editSvgBtn && editSvgBtn !== editBtn) {
+      editSvgBtn.click();
+      log("SVGパスで見つけた編集ボタンをクリック");
+      try {
+        await waitForElement(() => findModalByTitle("予約編集"), 3000);
         log("予約編集モーダルが開きました ✓");
         return;
       } catch (_) {}
@@ -897,13 +911,13 @@
     // 方法3: 同じ行内のSVG鉛筆ボタンを探す
     if (row) {
       const svgBtns = Array.from(row.querySelectorAll("button, [role='button']"))
-        .filter(b => isVisible(b) && b.querySelector("svg"));
+        .filter(b => isVisible(b) && b.querySelector("svg") && b !== editBtn && b !== editSvgBtn);
       for (const btn of svgBtns) {
         if (isLikelyEditButton(btn)) {
-          safeClick(btn);
+          btn.click();
           log("行内の編集SVGボタンをクリック");
           try {
-            await waitForElement(() => findModalByTitle("予約編集"), 1500);
+            await waitForElement(() => findModalByTitle("予約編集"), 2000);
             log("予約編集モーダルが開きました ✓");
             return;
           } catch (_) {
@@ -914,21 +928,17 @@
       }
     }
 
-    // 方法4: 行の最初のセルをクリック（行選択で予約編集が開く場合）
-    if (row) {
-      const firstCell = row.querySelector("td");
-      if (firstCell && firstCell !== cell) {
-        safeClick(firstCell);
-        log("行の最初のセルをクリック");
-        try {
-          await waitForElement(() => findModalByTitle("予約編集"), 1500);
-          log("予約編集モーダルが開きました ✓");
-          return;
-        } catch (_) {}
-      }
-    }
+    // 方法4（最終手段）: セル自体をクリック（ページ遷移の恐れあり）
+    warn("edit-iconボタンで予約編集が開きません。セル自体をクリックします（ページ遷移の恐れあり）");
+    safeClick(cell);
+    log("保険セルをクリック（最終手段）");
+    try {
+      await waitForElement(() => findModalByTitle("予約編集"), 2000);
+      log("予約編集モーダルが開きました ✓");
+      return;
+    } catch (_) {}
 
-    throw new Error("予約編集モーダルが開きません。手動で保険セルをクリックしてください。");
+    throw new Error("予約編集モーダルが開きません。手動で保険セルの鉛筆アイコンをクリックしてください。");
   }
 
   /**
