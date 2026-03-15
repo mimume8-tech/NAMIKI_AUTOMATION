@@ -845,7 +845,7 @@
           // edit-iconがなければ保険情報テキストのあるセルを探す
           for (const cell of cells) {
             const t = cell.textContent.trim();
-            if (t.includes("国保") || t.includes("社保") || t.includes("組合") || t.includes("保険") || t.includes("協会")) return cell;
+            if (t.includes("国保") || t.includes("社保") || t.includes("組合") || t.includes("保険") || t.includes("協会") || t.includes("共済") || t.includes("精神通院")) return cell;
           }
           // フォールバック: 7番目のセル (0-indexed: 6)
           if (cells.length >= 7) return cells[6];
@@ -2265,13 +2265,17 @@
         // 受付ページへ直接遷移 → ページ再初期化時に保留処理を実行する
         step = "受付一覧へ遷移（予約公費更新）";
         if (patientChartNumber) {
+          // 受付ページの日付を取得（sessionStorageに記憶済み、なければ今日で代替）
+          const storedReceptionDate = sessionStorage.getItem("jiritsu_reception_date");
+          const today2 = getTodayJST();
+          const fallbackDateStr = `${today2.year}${String(today2.month).padStart(2, '0')}${String(today2.day).padStart(2, '0')}`;
+          const receptionDateStr = storedReceptionDate || fallbackDateStr;
           localStorage.setItem(PENDING_RESERVATION_KEY, JSON.stringify({
             patientNumber: patientChartNumber,
+            receptionDate: receptionDateStr,
             timestamp: Date.now()
           }));
-          const today2 = getTodayJST();
-          const receptionDateStr = `${today2.year}${String(today2.month).padStart(2, '0')}${String(today2.day).padStart(2, '0')}`;
-          log("予約更新を保留して受付ページに遷移します...");
+          log(`予約更新を保留して受付ページに遷移します... (date=${receptionDateStr})`);
           showToast("受付一覧で予約の公費を更新します...", "info");
           window.location.href = `/reception/${receptionDateStr}`;
           return; // ページ遷移 → スクリプト再初期化で processPendingReservationUpdate が実行される
@@ -2382,6 +2386,11 @@
     window.setInterval(() => {
       const urlChanged = location.href !== lastLocationHref;
       if (urlChanged) lastLocationHref = location.href;
+      // 受付ページにいるとき、日付をsessionStorageに記憶（翌日受付など「今日」と異なる場合に必要）
+      const receptionMatch = location.pathname.match(/\/reception\/(\d{8})/);
+      if (receptionMatch) {
+        sessionStorage.setItem("jiritsu_reception_date", receptionMatch[1]);
+      }
       if (urlChanged || !document.getElementById(BTN_ID)) {
         scheduleEnsureButton(urlChanged ? 0 : ENSURE_BUTTON_DEBOUNCE_MS);
       }
@@ -2403,9 +2412,19 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v3.7.0 初期化");
+    log("v3.8.0 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
-    setTimeout(() => { ensureButton(); startObserver(); }, 800);
+    // 受付ページの日付を即座に記憶
+    const receptionMatch = location.pathname.match(/\/reception\/(\d{8})/);
+    if (receptionMatch) {
+      sessionStorage.setItem("jiritsu_reception_date", receptionMatch[1]);
+    }
+    setTimeout(async () => {
+      // 保留中の予約公費更新があれば先に処理
+      await processPendingReservationUpdate();
+      ensureButton();
+      startObserver();
+    }, 1200);
   }
 
   if (document.readyState === "loading") {
