@@ -562,8 +562,8 @@ async function watchLoop(browser) {
       log("下書き一括保存 開始 → 別ウィンドウで実行します...");
       try {
         exec(
-          `start "" cmd /k node tools/draft-save.js`,
-          { cwd: path.join(__dirname, "..") }
+          `start "" "C:\\NAMIKI_AUTOMATION\\tools\\run-draft-save.bat"`,
+          { cwd: "C:\\NAMIKI_AUTOMATION" }
         );
         log("下書き保存プロセス起動");
       } catch (err) {
