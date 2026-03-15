@@ -148,6 +148,19 @@ function ensureBookmarkBarVisible() {
     },
   };
 
+  // パスワード保存ダイアログを無効化
+  basePrefs.credentials_enable_service = false;
+  basePrefs.credentials_enable_autosignin = false;
+  basePrefs.password_manager = {
+    ...(basePrefs.password_manager || {}),
+    offer_to_save_passwords: false,
+    profile_store_date_last_used_for_filling: 0,
+  };
+  basePrefs.profile = {
+    ...(basePrefs.profile || {}),
+    password_manager_enabled: false,
+  };
+
   writeJsonFile(prefsPath, basePrefs);
 }
 

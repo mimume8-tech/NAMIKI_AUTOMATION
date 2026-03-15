@@ -105,6 +105,8 @@ async function launchChrome() {
     '--remote-debugging-address=127.0.0.1',
     '--no-first-run',
     '--new-window',
+    '--disable-save-password-bubble',
+    '--disable-password-generation',
     `--user-data-dir=${DIGIKAR_USER_DATA}`,
     `--profile-directory=${DIGIKAR_PROFILE_DIRECTORY}`,
     `http://localhost:${SERVER_PORT}`,

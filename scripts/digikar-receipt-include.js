@@ -78,6 +78,8 @@ function prompt(msg) {
     [
       `--remote-debugging-port=${DEBUG_PORT}`,
       '--remote-debugging-address=127.0.0.1',
+      '--disable-save-password-bubble',
+      '--disable-password-generation',
       `--user-data-dir=${CHROME_USER_DATA}`,
       '--profile-directory=Default',
       receptionUrl,
