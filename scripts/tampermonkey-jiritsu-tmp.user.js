@@ -826,64 +826,22 @@
    * @param {string|null} patientNumber - 患者番号（例: "2656"）
    */
   function findInsuranceCellInChartList(patientNumber) {
-    // 患者番号が指定されている場合、その患者の行を特定する
-    if (patientNumber) {
-      const tables = document.querySelectorAll("table");
-      for (const table of tables) {
-        if (!isVisible(table)) continue;
-        const rows = table.querySelectorAll("tbody tr");
-        for (const row of rows) {
-          if (!isVisible(row)) continue;
-          const cells = row.querySelectorAll("td");
-          // 患者番号が含まれるセルを探す
-          let hasPatient = false;
-          for (const cell of cells) {
-            const cellText = cell.textContent.trim();
-            // 完全一致（セル全体）
-            if (cellText === patientNumber) { hasPatient = true; break; }
-            // 直接テキストノードで完全一致
-            const directTexts = Array.from(cell.childNodes)
-              .filter((n) => n.nodeType === Node.TEXT_NODE)
-              .map((n) => n.textContent.trim());
-            if (directTexts.includes(patientNumber)) { hasPatient = true; break; }
-            // 子要素で完全一致
-            for (const child of cell.querySelectorAll("span, div, a, b, strong, p")) {
-              if (child.textContent.trim() === patientNumber) { hasPatient = true; break; }
-            }
-            if (hasPatient) break;
-            // 部分一致フォールバック: セルテキストが短く（数字のみ等）、患者番号を含む場合
-            // 例: "  2656  " や "No.2656" のようなケース
-            if (cellText.length < 20 && cellText.includes(patientNumber)) {
-              // 患者番号が独立した数字として含まれているか（"265" が "2656" にマッチしないように）
-              const regex = new RegExp(`(?:^|\\D)${patientNumber}(?:\\D|$)`);
-              if (regex.test(cellText)) { hasPatient = true; break; }
-            }
-          }
-          if (!hasPatient) continue;
-
-          log(`患者番号 ${patientNumber} の行を発見`);
-          // この行の保険セル（edit-iconボタンがあるセル）を探す
-          for (const cell of cells) {
-            if (cell.querySelector(SELECTORS.chartListInsuranceEditButton)) return cell;
-          }
-          // edit-iconがなければ保険情報テキストのあるセルを探す
-          for (const cell of cells) {
-            const t = cell.textContent.trim();
-            if (t.includes("国保") || t.includes("社保") || t.includes("組合") || t.includes("保険") || t.includes("協会") || t.includes("共済") || t.includes("精神通院")) return cell;
-          }
-          // フォールバック: 7番目のセル (0-indexed: 6)
-          if (cells.length >= 7) return cells[6];
-        }
+    // シンプルに: テーブルの各行のテキストに患者番号が含まれるか確認 → 7番目のtdを返す
+    const rows = document.querySelectorAll("table tbody tr");
+    for (const row of rows) {
+      if (!isVisible(row)) continue;
+      const rowText = row.textContent;
+      if (patientNumber && !rowText.includes(patientNumber)) continue;
+      const cells = row.querySelectorAll("td");
+      // 7番目のtd（保険セル）を返す
+      if (cells.length >= 7) {
+        log(`患者番号 ${patientNumber || "指定なし"} の行を発見 → td:nth-child(7)`);
+        return cells[6];
       }
-      warn(`患者番号 ${patientNumber} の行が見つかりません`);
-      // ★ 患者番号が指定されている場合は別の患者を返してはいけない → null
-      return null;
     }
-
-    // フォールバック（患者番号なしの場合のみ）
-    const directEditBtn = queryVisible(SELECTORS.chartListInsuranceEditButton);
-    if (directEditBtn) return directEditBtn.closest("td");
-
+    if (patientNumber) {
+      warn(`患者番号 ${patientNumber} の行が見つかりません`);
+    }
     return null;
   }
 
