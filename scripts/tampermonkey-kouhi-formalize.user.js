@@ -675,6 +675,96 @@
     return null;
   }
 
+  function findSidebarTabByText(label) {
+    const selector = 'button, a, [role="button"], [role="tab"], li, div, span';
+    const knownTabLabels = ["患者情報", "保険等", "問診", "副作用薬等", "ファイル"];
+    const candidates = Array.from(document.querySelectorAll(selector))
+      .filter((el) => isVisible(el))
+      .filter((el) => !el.closest('[role="dialog"], [class*="modal"], [class*="Modal"]'))
+      .map((el) => {
+        const ownText = flatText(
+          Array.from(el.childNodes)
+            .filter((node) => node.nodeType === Node.TEXT_NODE)
+            .map((node) => node.textContent)
+            .join(" ")
+        );
+        const text = ownText || flatText(el.textContent);
+        if (!text) return null;
+        if (text !== label && !text.includes(label)) return null;
+        if (text !== label && text.length > Math.max(label.length + 6, 12)) return null;
+
+        const rect = el.getBoundingClientRect();
+        let score = 0;
+        const attrBlob = [
+          el.getAttribute("role"),
+          el.getAttribute("aria-label"),
+          el.getAttribute("aria-controls"),
+          el.getAttribute("data-testid"),
+          el.className?.toString?.(),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        if (text === label) score += 1200;
+        else score += 260;
+
+        if (el.getAttribute("role") === "tab") score += 520;
+        if (el.matches('button, a, [role="button"]')) score += 180;
+        if (/tab|nav|menu|side|item|list/.test(attrBlob)) score += 140;
+        if (rect.left < window.innerWidth * 0.33) score += 240;
+        else if (rect.left < window.innerWidth * 0.5) score += 100;
+        if (rect.width < 320) score += 40;
+        if (rect.top < window.innerHeight * 0.9) score += 30;
+
+        const sidebarAncestor = el.closest('aside, nav, ul, [role="tablist"], [class*="side"], [class*="nav"], [class*="menu"], [class*="tab"]');
+        if (sidebarAncestor) score += 260;
+
+        let siblingTabCount = 0;
+        let current = el.parentElement;
+        for (let depth = 0; depth < 4 && current; depth += 1) {
+          const siblingTexts = Array.from(current.children)
+            .map((child) => flatText(child.textContent))
+            .filter((textValue) => knownTabLabels.includes(textValue));
+          if (siblingTexts.length >= 2) {
+            siblingTabCount = Math.max(siblingTabCount, siblingTexts.length);
+          }
+          current = current.parentElement;
+        }
+        score += siblingTabCount * 70;
+
+        return {
+          el,
+          score,
+          text,
+          left: Math.round(rect.left),
+          top: Math.round(rect.top),
+          role: el.getAttribute("role") || "",
+          tag: el.tagName.toLowerCase(),
+          attrBlob,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score || a.left - b.left || a.top - b.top);
+
+    if (CONFIG.debug) {
+      console.table(
+        candidates.slice(0, 12).map((item, index) => ({
+          rank: index + 1,
+          score: item.score,
+          tag: item.tag,
+          role: item.role,
+          left: item.left,
+          top: item.top,
+          text: item.text,
+          hint: item.attrBlob.slice(0, 80),
+        }))
+      );
+    }
+
+    return candidates[0]?.el || null;
+  }
+
   function findModalByTitle(title) {
     const titleNodes = Array.from(
       document.querySelectorAll("h1, h2, h3, h4, h5, h6, [class*='title'], [class*='Title'], [class*='header'], [class*='Header']")
@@ -723,28 +813,72 @@
   async function ensureFileTabOpen() {
     logStep("ensureFileTabOpen", "ファイルタブを開きます");
 
-    const alreadyOpen = Array.from(document.querySelectorAll("img, a"))
-      .some((node) => {
-        const value = node.getAttribute("src") || node.getAttribute("href") || "";
-        return /attachments/.test(value);
+    const isActiveLike = (tab) => {
+      if (!tab) return false;
+      const ariaSelected = String(tab.getAttribute("aria-selected") || "").toLowerCase();
+      const ariaCurrent = String(tab.getAttribute("aria-current") || "").toLowerCase();
+      const ariaPressed = String(tab.getAttribute("aria-pressed") || "").toLowerCase();
+      const dataState = String(tab.getAttribute("data-state") || "").toLowerCase();
+      const dataActive = String(tab.getAttribute("data-active") || "").toLowerCase();
+      const cls = String(tab.className || "").toLowerCase();
+      if (["true", "page", "step"].includes(ariaCurrent)) return true;
+      if (ariaSelected === "true" || ariaPressed === "true") return true;
+      if (["active", "open", "selected", "current"].includes(dataState) || dataActive === "true") return true;
+      if (/(active|selected|current|is-active)/.test(cls)) return true;
+      const style = getComputedStyle(tab);
+      if (Number.parseInt(style.fontWeight || "0", 10) >= 600) return true;
+      return false;
+    };
+
+    const findFileReadyMarker = () => {
+      const attachmentUrlNode = Array.from(document.querySelectorAll("[href], [src]")).find((node) => {
+        if (!isVisible(node)) return false;
+        const value = node.getAttribute("href") || node.getAttribute("src") || "";
+        return /attachments|public_api\/patients/.test(value);
       });
-    if (alreadyOpen) {
-      debugLog("ensureFileTabOpen", "すでに添付画像系DOMが見えています");
+      if (attachmentUrlNode) return attachmentUrlNode;
+
+      const thumbnailNode = Array.from(document.querySelectorAll("img")).find((img) => {
+        if (!isVisible(img)) return false;
+        const src = img.getAttribute("src") || "";
+        if (/attachments|public_api\/patients/.test(src)) return true;
+        const rect = img.getBoundingClientRect();
+        return rect.width >= 40 && rect.height >= 40;
+      });
+      if (thumbnailNode) return thumbnailNode;
+
+      const keywordNode = findTextElement(["添付", "受給者証", "ダウンロード", "サムネイル"]);
+      if (keywordNode) return keywordNode;
+
+      const fileTab = findSidebarTabByText("ファイル");
+      if (fileTab && isActiveLike(fileTab)) return fileTab;
+
+      return null;
+    };
+
+    const initialMarker = findFileReadyMarker();
+    if (initialMarker) {
+      debugLog("ensureFileTabOpen", "すでにファイルタブ側のDOMが見えています", initialMarker);
       return true;
     }
 
-    const fileTab = findButtonByText(["ファイル"]);
+    const fileTab = findSidebarTabByText("ファイル");
     if (!fileTab) fail("ファイルタブが見つかりません");
+
+    logStep("ensureFileTabOpen", "ファイルタブ候補をクリックします", {
+      tag: fileTab.tagName,
+      role: fileTab.getAttribute("role") || "",
+      text: flatText(fileTab.textContent),
+      className: String(fileTab.className || ""),
+    });
+
     safeClick(fileTab);
 
-    await waitFor(
-      () =>
-        Array.from(document.querySelectorAll("img, a")).find((node) => {
-          const value = node.getAttribute("src") || node.getAttribute("href") || "";
-          return /attachments|public_api\/patients/.test(value);
-        }) || findTextElement(["添付", "ファイル", "受給者証"]),
-      { timeoutMs: CONFIG.timeoutMs, name: "ファイルタブ内容" }
-    );
+    await waitFor(findFileReadyMarker, {
+      timeoutMs: CONFIG.timeoutMs,
+      name: "ファイルタブ内容 or active状態",
+      observeAttributes: true,
+    }).catch(() => fail("ファイルタブクリック後に添付一覧DOMもactive状態も確認できませんでした"));
 
     return true;
   }
