@@ -83,7 +83,7 @@ async function main() {
   }
   log("Chrome 接続OK");
 
-  const context = browser.contexts()[0];
+  let context = browser.contexts()[0];
   if (!context) {
     log("[エラー] ブラウザコンテキストなし");
     process.exit(1);
@@ -166,12 +166,20 @@ async function main() {
 
     try {
       await workPage.goto(fullUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
-      await sleep(1500);
 
       // モーダルオーバーレイを除去
       await workPage.evaluate(() => {
         document.querySelectorAll('[class*="modal-flag"]').forEach((el) => el.remove());
       });
+
+      // セクションヘッダーが描画されるまで待つ（SPA描画待ち）
+      const ready = await waitForKarteReady(workPage);
+      if (!ready) {
+        log("  ⚠ カルテページの読み込みタイムアウト");
+        errors.push({ patient: label, error: "カルテ読み込みタイムアウト" });
+        errorCount++;
+        continue;
+      }
 
       const result = await processOneKarte(workPage, fullUrl);
 
@@ -193,14 +201,24 @@ async function main() {
       errors.push({ patient: label, error: err.message });
       errorCount++;
 
-      // ページが閉じられた場合、再取得
+      // ページが閉じられた場合、再取得を試みる
       if (err.message.includes("closed") || err.message.includes("Target page")) {
+        // まずコンテキスト経由で再作成
         try {
           workPage = await context.newPage();
           log("  → 作業タブを再作成");
         } catch (reconnErr) {
-          log(`  ✗ 再作成失敗: ${reconnErr.message}`);
-          break;
+          // コンテキストが死んでいる場合、ブラウザに再接続
+          log("  → コンテキスト無効、ブラウザ再接続...");
+          try {
+            browser = await chromium.connectOverCDP(CDP_URL);
+            context = browser.contexts()[0];
+            workPage = await context.newPage();
+            log("  → ブラウザ再接続＆作業タブ再作成OK");
+          } catch (reconnErr2) {
+            log(`  ✗ 再接続失敗: ${reconnErr2.message}`);
+            break;
+          }
         }
       }
     }
@@ -259,13 +277,25 @@ async function processOneKarte(page, fullUrl) {
     return "skipped";
   }
 
-  // ── 2. 不足セクションのみ複写（二重複写防止） ──
-  const copyResult = await doCopyButtonsWithVerify(page);
+  // ── 2. 不足セクションのみ複写（リトライあり） ──
+  let shusoOk = shusoHas;
+  let shochiOk = shochiHas;
 
-  // ── 3. 両方の検証（￥を押す前に必ず確認） ──
-  const shusoOk = await checkSectionHasContent(page, "主訴");
-  const shochiOk = await checkSectionHasContent(page, "処置");
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    if (attempt > 1) {
+      log(`  → 複写リトライ (${attempt}/3)...`);
+      await sleep(2000);
+    }
 
+    await doCopyButtonsWithVerify(page);
+
+    shusoOk = await checkSectionHasContent(page, "主訴");
+    shochiOk = await checkSectionHasContent(page, "処置");
+
+    if (shusoOk && shochiOk) break;
+  }
+
+  // ── 3. 最終検証 ──
   if (!shusoOk || !shochiOk) {
     const failed = [];
     if (!shusoOk) failed.push("主訴・所見");
@@ -318,7 +348,7 @@ async function doCopyButtonsWithVerify(page) {
   } else {
     try {
       await clickSectionCopyButton(page, "主訴・所見");
-      await sleep(1500);
+      await sleep(2500);
       if (await checkSectionHasContent(page, "主訴")) {
         log("  ✓ 主訴・所見 複写OK");
         result.shuso = true;
@@ -338,7 +368,7 @@ async function doCopyButtonsWithVerify(page) {
   } else {
     try {
       await clickSectionCopyButton(page, "処置・行為");
-      await sleep(1500);
+      await sleep(2500);
       if (await checkSectionHasContent(page, "処置")) {
         log("  ✓ 処置・行為 複写OK");
         result.shochi = true;
@@ -356,6 +386,30 @@ async function doCopyButtonsWithVerify(page) {
 // ══════════════════════════════════════════════════
 // DOM 操作ヘルパー
 // ══════════════════════════════════════════════════
+
+async function waitForKarteReady(page, timeoutMs = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const found = await page.evaluate(() => {
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        const text = node.textContent.trim();
+        if (text === "主訴・所見" || text === "処置・行為") {
+          const el = node.parentElement;
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            if (rect.left >= 200 && rect.width > 0) return true;
+          }
+        }
+      }
+      return false;
+    }).catch(() => false);
+    if (found) return true;
+    await sleep(500);
+  }
+  return false;
+}
 
 async function checkEditingAreaEmpty(page) {
   return page.evaluate(() => {
@@ -459,6 +513,7 @@ async function checkSectionHasContent(page, keyword) {
 
 async function clickSectionCopyButton(page, sectionTitle) {
   const pos = await page.evaluate((title) => {
+    // 編集パネル内のセクションタイトルを探す（left >= 200, 算定サイドバー除外）
     const titleNodes = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node;
@@ -468,31 +523,39 @@ async function clickSectionCopyButton(page, sectionTitle) {
       if (!el) continue;
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) continue;
-      if (rect.left >= 530) continue;
+      if (rect.left < 200 || rect.left > window.innerWidth * 0.78) continue;
       titleNodes.push({ el, top: rect.top, left: rect.left });
     }
 
     const matches = [];
     for (const tn of titleNodes) {
-      const parent = tn.el.parentElement;
-      if (!parent) continue;
+      // 親要素を最大8階層まで遡って複写ボタンを探す
+      let container = tn.el;
+      let found = false;
+      for (let level = 0; level < 8 && !found; level++) {
+        container = container.parentElement;
+        if (!container) break;
 
-      const buttons = parent.querySelectorAll('button[data-variant="iconOnly"]');
-      for (const btn of buttons) {
-        const pathEl = btn.querySelector("svg path");
-        if (!pathEl) continue;
-        const d = pathEl.getAttribute("d") || "";
-        if (!d.startsWith("M15 18v-4.5H9")) continue;
+        const buttons = container.querySelectorAll('button[data-variant="iconOnly"]');
+        for (const btn of buttons) {
+          const pathEl = btn.querySelector("svg path");
+          if (!pathEl) continue;
+          const d = pathEl.getAttribute("d") || "";
+          if (!d.startsWith("M15 18v-4.5H9")) continue;
 
-        const bRect = btn.getBoundingClientRect();
-        if (bRect.width === 0 || bRect.height === 0) continue;
+          const bRect = btn.getBoundingClientRect();
+          if (bRect.width === 0 || bRect.height === 0) continue;
+          // ボタンがセクションタイトルの近くにあることを確認（y方向±50px）
+          if (Math.abs(bRect.top - tn.top) > 50) continue;
 
-        matches.push({
-          x: Math.round(bRect.left + bRect.width / 2),
-          y: Math.round(bRect.top + bRect.height / 2),
-          top: tn.top,
-        });
-        break;
+          matches.push({
+            x: Math.round(bRect.left + bRect.width / 2),
+            y: Math.round(bRect.top + bRect.height / 2),
+            top: tn.top,
+          });
+          found = true;
+          break;
+        }
       }
     }
 
