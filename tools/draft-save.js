@@ -228,62 +228,33 @@ function notifyCompletion(pages) {
 // ══════════════════════════════════════════════════
 
 async function processOneKarte(page, fullUrl) {
-  // 右パネルに既に内容があるか
-  const alreadyHasContent = !(await checkEditingAreaEmpty(page));
-  if (alreadyHasContent) {
-    log("  → 複写済み（右パネルに内容あり）→ スキップ");
+  // ── 1. 右パネルの現状確認 ──
+  const shusoHas = await checkSectionHasContent(page, "主訴");
+  const shochiHas = await checkSectionHasContent(page, "処置");
+
+  if (shusoHas && shochiHas) {
+    log("  → 両セクション複写済み → スキップ");
     return "skipped";
   }
 
-  // 複写を試みる（各セクションで既存内容があればスキップ）
-  let copyResult = await doCopyButtonsWithVerify(page);
-  const stillEmpty = await checkEditingAreaEmpty(page);
+  // ── 2. 不足セクションのみ複写（二重複写防止） ──
+  const copyResult = await doCopyButtonsWithVerify(page);
 
-  if (stillEmpty || !copyResult.shuso || !copyResult.shochi) {
-    // 既存入力がある場合はリセットせず、足りない部分だけ再試行
-    const hasPartialContent = !stillEmpty;
-    if (hasPartialContent) {
-      log("  ⚠ 部分的に複写済み → 不足分のみ再試行（既存内容は保持）");
-      copyResult = await doCopyButtonsWithVerify(page);
-    } else {
-      log("  ⚠ 複写後も不完全 → 空の下書きを削除して再試行");
+  // ── 3. 両方の検証（￥を押す前に必ず確認） ──
+  const shusoOk = await checkSectionHasContent(page, "主訴");
+  const shochiOk = await checkSectionHasContent(page, "処置");
 
-      try {
-        await clickTabCloseButton(page);
-        await sleep(800);
-        await handleConfirmDialog(page);
-        await sleep(800);
-      } catch (e) {
-        console.warn(`    ⚠ タブ閉じ失敗: ${e.message}`);
-      }
-
-      await page.goto(fullUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
-      await sleep(1500);
-
-      await page.evaluate(() => {
-        document.querySelectorAll('[class*="modal-flag"]').forEach((el) => el.remove());
-      });
-
-      copyResult = await doCopyButtonsWithVerify(page);
-    }
-
-    if (!copyResult.shuso || !copyResult.shochi) {
-      const failed = [];
-      if (!copyResult.shuso) failed.push("主訴・所見");
-      if (!copyResult.shochi) failed.push("処置・行為");
-      log(`  ✗ 再試行後も複写失敗: ${failed.join(", ")}`);
-      return "failed";
-    }
-  }
-
-  // 最終確認
-  const finalEmpty = await checkEditingAreaEmpty(page);
-  if (finalEmpty) {
-    log("  ✗ 複写ボタンは押せたが右パネルに内容が反映されていない");
+  if (!shusoOk || !shochiOk) {
+    const failed = [];
+    if (!shusoOk) failed.push("主訴・所見");
+    if (!shochiOk) failed.push("処置・行為");
+    log(`  ✗ 複写不完全（${failed.join(", ")}）→ 保存せずスキップ`);
     return "failed";
   }
 
-  // ￥ボタン（下書き保存）
+  log("  ✓ 両セクション確認OK → ￥ボタンで保存");
+
+  // ── 4. ￥ボタン（下書き保存） ──
   try {
     await clickYenButton(page);
   } catch (e) {
@@ -316,71 +287,44 @@ async function processOneKarte(page, fullUrl) {
 
 async function doCopyButtonsWithVerify(page) {
   const result = { shuso: false, shochi: false };
-  const MAX_RETRIES = 2;
 
   // --- 主訴・所見 ---
-  // 既に内容があればスキップ（二重複写防止）
-  const shusoAlready = await checkSectionHasContent(page, "主訴");
-  if (shusoAlready) {
-    log("  → 主訴・所見: 既に入力あり → スキップ");
+  // 複写前に必ず内容チェック（二重複写を絶対防止）
+  if (await checkSectionHasContent(page, "主訴")) {
+    log("  → 主訴・所見: 既に入力あり → 複写しない");
     result.shuso = true;
   } else {
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        await clickSectionCopyButton(page, "主訴・所見");
-        await sleep(1000);
-        const hasContent = await checkSectionHasContent(page, "主訴");
-        if (hasContent) {
-          log("  ✓ 主訴・所見 複写");
-          result.shuso = true;
-          break;
-        } else if (attempt < MAX_RETRIES) {
-          log(`  ⚠ 主訴・所見 未反映 → リトライ (${attempt}/${MAX_RETRIES})`);
-          await sleep(500);
-        } else {
-          log(`  ⚠ 主訴・所見 未反映 (${MAX_RETRIES}回試行)`);
-        }
-      } catch (e) {
-        if (attempt < MAX_RETRIES) {
-          log(`  ⚠ 主訴・所見: ${e.message} → リトライ`);
-          await sleep(500);
-        } else {
-          log(`  ⚠ 主訴・所見: ${e.message}`);
-        }
+    try {
+      await clickSectionCopyButton(page, "主訴・所見");
+      await sleep(1500);
+      if (await checkSectionHasContent(page, "主訴")) {
+        log("  ✓ 主訴・所見 複写OK");
+        result.shuso = true;
+      } else {
+        log("  ⚠ 主訴・所見 複写後も内容なし");
       }
+    } catch (e) {
+      log(`  ⚠ 主訴・所見: ${e.message}`);
     }
   }
 
   // --- 処置・行為 ---
-  // 既に内容があればスキップ（二重複写防止）
-  const shochiAlready = await checkSectionHasContent(page, "処置");
-  if (shochiAlready) {
-    log("  → 処置・行為: 既に入力あり → スキップ");
+  // 複写前に必ず内容チェック（二重複写を絶対防止）
+  if (await checkSectionHasContent(page, "処置")) {
+    log("  → 処置・行為: 既に入力あり → 複写しない");
     result.shochi = true;
   } else {
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        await clickSectionCopyButton(page, "処置・行為");
-        await sleep(1000);
-        const hasContent = await checkSectionHasContent(page, "処置");
-        if (hasContent) {
-          log("  ✓ 処置・行為 複写");
-          result.shochi = true;
-          break;
-        } else if (attempt < MAX_RETRIES) {
-          log(`  ⚠ 処置・行為 未反映 → リトライ (${attempt}/${MAX_RETRIES})`);
-          await sleep(500);
-        } else {
-          log(`  ⚠ 処置・行為 未反映 (${MAX_RETRIES}回試行)`);
-        }
-      } catch (e) {
-        if (attempt < MAX_RETRIES) {
-          log(`  ⚠ 処置・行為: ${e.message} → リトライ`);
-          await sleep(500);
-        } else {
-          log(`  ⚠ 処置・行為: ${e.message}`);
-        }
+    try {
+      await clickSectionCopyButton(page, "処置・行為");
+      await sleep(1500);
+      if (await checkSectionHasContent(page, "処置")) {
+        log("  ✓ 処置・行為 複写OK");
+        result.shochi = true;
+      } else {
+        log("  ⚠ 処置・行為 複写後も内容なし");
       }
+    } catch (e) {
+      log(`  ⚠ 処置・行為: ${e.message}`);
     }
   }
 

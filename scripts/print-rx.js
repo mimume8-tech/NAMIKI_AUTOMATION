@@ -560,14 +560,12 @@ async function watchLoop(browser) {
 
     if (draftSaveRequested) {
       log("下書き一括保存 開始 → 別ウィンドウで実行します...");
-      const nodePath = process.execPath;
-      const scriptPath = path.join(__dirname, "..", "tools", "draft-save.js");
       try {
         exec(
-          `start "DraftSave" cmd /k ""${nodePath}" "${scriptPath}""`,
+          `start "" cmd /k node tools/draft-save.js`,
           { cwd: path.join(__dirname, "..") }
         );
-        log(`下書き保存プロセス起動: ${scriptPath}`);
+        log("下書き保存プロセス起動");
       } catch (err) {
         log(`下書き保存起動エラー: ${err.message}`);
         // 起動失敗時はボタンをリセット
