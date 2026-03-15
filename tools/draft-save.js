@@ -372,15 +372,23 @@ async function checkEditingAreaEmpty(page) {
     const ignoreLabels = [
       "主訴・所見", "処置・行為", "キーワード", "下書き", "未承認",
       "シェーマ追加", "処方箋備考", "適応症追加", "心療内科", "木村友哉",
+      "複写", "保存", "削除", "承認",
+      "再診料", "初診料", "明細書", "処方料", "調剤料", "処方箋料",
+      "通院精神療法", "夜間・早朝", "加算", "電話等再診",
+      "処方薬料", "一般名処方", "一包化", "リフィル",
+      "Draft Saver", "Start", "Stop", "受付メモ", "付番",
+      "処方箋のみ", "全部印刷", "位置リセット", "ドラッグ",
+      "セット", "通常請求", "FAX希望", "カルテ一覧",
     ];
+    const maxLeft = window.innerWidth * 0.78;
     while ((node = walker.nextNode())) {
       const el = node.parentElement;
       if (!el) continue;
       const rect = el.getBoundingClientRect();
-      if (rect.left < 530 || rect.top < 100 || rect.top > 800) continue;
+      if (rect.left < 200 || rect.left > maxLeft || rect.top < 100 || rect.top > 800) continue;
       if (rect.width === 0 || rect.height === 0) continue;
       const t = node.textContent.trim();
-      if (t.length > 2 && !ignoreLabels.some((l) => t.includes(l))) {
+      if (t.length > 3 && !ignoreLabels.some((l) => t.includes(l))) {
         allText.push(t);
       }
     }
@@ -394,10 +402,22 @@ async function checkSectionHasContent(page, keyword) {
       "主訴・所見", "処置・行為", "キーワード", "下書き", "未承認",
       "シェーマ追加", "処方箋備考", "適応症追加", "心療内科", "木村友哉",
       "複写", "保存", "削除", "承認",
+      // 算定サイドバー・請求関連
+      "再診料", "初診料", "明細書", "処方料", "調剤料", "処方箋料",
+      "通院精神療法", "夜間・早朝", "加算", "電話等再診",
+      "処方薬料", "一般名処方", "一包化", "リフィル",
+      // UI要素
+      "Draft Saver", "Start", "Stop", "受付メモ", "付番",
+      "処方箋のみ", "全部印刷", "位置リセット", "ドラッグ",
+      "準備完了", "停止中", "待機中", "AM付", "PM付",
+      // その他UI
+      "セット", "通常請求", "FAX希望", "カルテ一覧",
+      "適応症追加", "処方箋備考に一包化を記載",
     ];
 
-    let sectionTop = 0;
-    let sectionBottom = 2000;
+    // セクションヘッダーを探す（x >= 200 で左パネル履歴を除外）
+    let sectionTop = -1;
+    let sectionLeft = 0;
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
@@ -406,23 +426,30 @@ async function checkSectionHasContent(page, keyword) {
       const text = node.textContent.trim();
       if (text.includes(kw) && text.length < 20) {
         const rect = el.getBoundingClientRect();
-        if (rect.left >= 530 && rect.width > 0) {
+        if (rect.left >= 200 && rect.width > 0) {
           sectionTop = rect.top;
-          sectionBottom = sectionTop + 400;
+          sectionLeft = rect.left;
           break;
         }
       }
     }
+
+    // セクションヘッダーが見つからない → 内容なしと判定
+    if (sectionTop < 0) return false;
+
+    const sectionBottom = sectionTop + 400;
+    // 算定サイドバーを除外: ヘッダーx位置 + 550px or 画面幅80%の小さい方
+    const maxLeft = Math.min(sectionLeft + 550, window.innerWidth * 0.78);
 
     const walker2 = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     while ((node = walker2.nextNode())) {
       const el = node.parentElement;
       if (!el) continue;
       const rect = el.getBoundingClientRect();
-      if (rect.left < 530 || rect.width === 0 || rect.height === 0) continue;
+      if (rect.left < 200 || rect.left > maxLeft || rect.width === 0 || rect.height === 0) continue;
       if (rect.top < sectionTop + 20 || rect.top > sectionBottom) continue;
       const t = node.textContent.trim();
-      if (t.length > 2 && !ignoreLabels.some((l) => t.includes(l))) {
+      if (t.length > 3 && !ignoreLabels.some((l) => t.includes(l))) {
         return true;
       }
     }
