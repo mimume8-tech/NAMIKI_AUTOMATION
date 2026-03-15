@@ -241,13 +241,18 @@ async function runAutomation(targetDate) {
 
         const result = await processOneKarte(page, fullUrl);
 
-        processed.add(href);
-        saveProcessed(processed);
-
-        if (result === 'skipped') {
-          state.skippedCount++;
+        if (result === 'failed') {
+          log(`  ✗ 下書き保存に失敗 → processed に追加しません`);
+          state.errors.push({ patient: name, error: '複写または保存に失敗' });
+          state.errorCount++;
         } else {
-          state.savedCount++;
+          processed.add(href);
+          saveProcessed(processed);
+          if (result === 'skipped') {
+            state.skippedCount++;
+          } else {
+            state.savedCount++;
+          }
         }
       } catch (err) {
         log(`  !! エラー: ${err.message}`);
@@ -286,13 +291,12 @@ async function processOneKarte(page, fullUrl) {
     return 'skipped';
   }
 
-  // 複写を試みる
-  await doCopyButtons(page);
+  // 複写を試みる（検証付き）
+  let copyResult = await doCopyButtonsWithVerify(page);
 
-  // 複写後チェック
-  const stillEmpty = await checkEditingAreaEmpty(page);
-  if (stillEmpty) {
-    log('  -> 空の下書き検出 -> 削除して再試行');
+  // 複写不完全 → 空の下書きを削除して再試行
+  if (!copyResult.shuso || !copyResult.shochi) {
+    log('  ⚠ 複写不完全 → 空の下書きを削除して再試行');
     try {
       await clickTabCloseButton(page);
       await waitFor(page, WAIT.afterTabClose);
@@ -308,30 +312,116 @@ async function processOneKarte(page, fullUrl) {
     await page.evaluate(() => {
       document.querySelectorAll('[class*="modal-flag"]').forEach(el => el.remove());
     });
-    await doCopyButtons(page);
+    copyResult = await doCopyButtonsWithVerify(page);
   }
 
-  // ￥ボタン
+  // 複写成功の最終チェック（条件A・B）
+  if (!copyResult.shuso) {
+    log('  ✗ 主訴・所見の複写がDOMに反映されていない → 失敗');
+    return 'failed';
+  }
+  if (!copyResult.shochi) {
+    log('  ✗ 処置・行為の複写がDOMに反映されていない → 失敗');
+    return 'failed';
+  }
+
+  // ￥ボタン（下書き保存）— 条件C: アスタリスク消失
+  const hadAsterisk = await checkAsteriskPresent(page);
+  log(`    ￥押下前 アスタリスク: ${hadAsterisk ? 'あり' : 'なし'}`);
+
   try {
     await clickYenButton(page);
-    log('  [OK] 下書き保存');
-  } catch (e) { log(`  ! ￥ボタン: ${e.message}`); }
-  await waitFor(page, WAIT.afterYen);
+  } catch (e) {
+    log(`  ✗ ￥ボタン失敗: ${e.message}`);
+    return 'failed';
+  }
+
+  // アスタリスク消失を待つ
+  const asteriskGone = await waitForAsteriskGone(page, 10000);
+  if (!asteriskGone) {
+    log('  ✗ ￥押下後も「*」が消えない → 保存未完了');
+    return 'failed';
+  }
+
+  // エラーダイアログチェック
+  const hasError = await page.evaluate(() => {
+    const errorDialog = document.querySelector('[role="alertdialog"], [role="alert"]');
+    if (errorDialog) {
+      const text = errorDialog.textContent || '';
+      if (text.includes('エラー') || text.includes('失敗')) return text.substring(0, 100);
+    }
+    return null;
+  });
+  if (hasError) {
+    log(`  ✗ 保存後エラー検出: ${hasError}`);
+    return 'failed';
+  }
+
+  log('  ✓ 下書き保存 完了 (主訴✓ 処置✓ 保存✓)');
   return 'saved';
 }
 
-async function doCopyButtons(page) {
-  try {
-    await clickSectionCopyButton(page, '主訴・所見');
-    log('  [OK] 主訴・所見 複写');
-  } catch (e) { log(`  ! 主訴・所見: ${e.message}`); }
-  await waitFor(page, WAIT.afterCopy);
+async function doCopyButtonsWithVerify(page) {
+  const result = { shuso: false, shochi: false };
+  const MAX_RETRIES = 5;
 
-  try {
-    await clickSectionCopyButton(page, '処置・行為');
-    log('  [OK] 処置・行為 複写');
-  } catch (e) { log(`  ! 処置・行為: ${e.message}`); }
-  await waitFor(page, WAIT.afterCopy);
+  // --- 主訴・所見 ---
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const before = await getSectionSnapshot(page, '主訴・所見');
+      log(`    主訴・所見 複写前: ${before.contentLength}文字`);
+
+      await clickSectionCopyButton(page, '主訴・所見');
+
+      const changed = await waitForSectionChange(page, '主訴・所見', before, 5000);
+      if (changed) {
+        const after = await getSectionSnapshot(page, '主訴・所見');
+        log(`    主訴・所見 複写後: ${after.contentLength}文字 (差分+${after.contentLength - before.contentLength})`);
+        log('  ✓ 主訴・所見 複写');
+        result.shuso = true;
+        break;
+      } else {
+        log(`  ⚠ 主訴・所見 DOM変化なし → リトライ (${attempt}/${MAX_RETRIES})`);
+        await waitFor(page, 500);
+      }
+    } catch (e) {
+      log(`  ⚠ 主訴・所見: ${e.message} → リトライ (${attempt}/${MAX_RETRIES})`);
+      await waitFor(page, 500);
+    }
+  }
+  if (!result.shuso) {
+    log(`  ✗ 主訴・所見 複写失敗 (${MAX_RETRIES}回試行)`);
+  }
+
+  // --- 処置・行為 ---
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const before = await getSectionSnapshot(page, '処置・行為');
+      log(`    処置・行為 複写前: ${before.contentLength}文字`);
+
+      await clickSectionCopyButton(page, '処置・行為');
+
+      const changed = await waitForSectionChange(page, '処置・行為', before, 5000);
+      if (changed) {
+        const after = await getSectionSnapshot(page, '処置・行為');
+        log(`    処置・行為 複写後: ${after.contentLength}文字 (差分+${after.contentLength - before.contentLength})`);
+        log('  ✓ 処置・行為 複写');
+        result.shochi = true;
+        break;
+      } else {
+        log(`  ⚠ 処置・行為 DOM変化なし → リトライ (${attempt}/${MAX_RETRIES})`);
+        await waitFor(page, 500);
+      }
+    } catch (e) {
+      log(`  ⚠ 処置・行為: ${e.message} → リトライ (${attempt}/${MAX_RETRIES})`);
+      await waitFor(page, 500);
+    }
+  }
+  if (!result.shochi) {
+    log(`  ✗ 処置・行為 複写失敗 (${MAX_RETRIES}回試行)`);
+  }
+
+  return result;
 }
 
 async function checkEditingAreaEmpty(page) {
@@ -455,6 +545,91 @@ async function clickYenButton(page) {
     return clickYenButton(page);
   }
   await page.mouse.click(pos.x, pos.y);
+}
+
+/**
+ * セクション（主訴・所見 or 処置・行為）のコンテンツスナップショットを取得
+ * 見出しテキストを含む親divを起点に、ヘッダー以外の子要素のtextContentを返す
+ */
+async function getSectionSnapshot(page, sectionTitle) {
+  return await page.evaluate((title) => {
+    // 見出しテキストを含むspanを探す
+    const spans = document.querySelectorAll('span');
+    for (const span of spans) {
+      if (span.textContent.trim() !== title) continue;
+      const headerDiv = span.parentElement;
+      if (!headerDiv || headerDiv.tagName !== 'DIV') continue;
+      // このヘッダーdivが複写ボタン（SVGパス M15 18v-4.5H9）を含むか確認
+      const svgPath = headerDiv.querySelector('svg path');
+      if (!svgPath) continue;
+      const d = svgPath.getAttribute('d') || '';
+      if (!d.startsWith('M15 18v-4.5H9')) continue;
+      // セクションコンテナ = ヘッダーdivの親
+      const container = headerDiv.parentElement;
+      if (!container) continue;
+      // ヘッダー以外の子要素のテキストを収集
+      let contentText = '';
+      for (const child of container.children) {
+        if (child === headerDiv) continue;
+        contentText += (child.textContent || '') + ' ';
+      }
+      contentText = contentText.trim();
+      return { contentText, contentLength: contentText.length };
+    }
+    return { contentText: '', contentLength: 0 };
+  }, sectionTitle);
+}
+
+/**
+ * セクションのコンテンツが変化するまで待機
+ */
+async function waitForSectionChange(page, sectionTitle, beforeSnapshot, timeoutMs) {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeoutMs) {
+    const current = await getSectionSnapshot(page, sectionTitle);
+    // コンテンツが5文字以上増え、かつ内容が異なれば変化あり
+    if (current.contentLength > beforeSnapshot.contentLength + 5 &&
+        current.contentText !== beforeSnapshot.contentText) {
+      return true;
+    }
+    await page.waitForTimeout(300);
+  }
+  return false;
+}
+
+/**
+ * タブバーにアスタリスク（*）が存在するかチェック
+ * 未保存の変更がある場合、タブテキストが「* 国保精...」のように * で始まる
+ */
+async function checkAsteriskPresent(page) {
+  return await page.evaluate(() => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while (node = walker.nextNode()) {
+      const el = node.parentElement;
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      // タブバーエリア（画面上部 60px 以内）
+      if (rect.top > 60 || rect.bottom < 0) continue;
+      if (rect.width === 0 || rect.height === 0) continue;
+      const t = node.textContent.trim();
+      if (t.startsWith('*') && t.length > 1) return true;
+    }
+    return false;
+  });
+}
+
+/**
+ * アスタリスク（*）が消えるまで待機
+ */
+async function waitForAsteriskGone(page, timeoutMs) {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeoutMs) {
+    const hasAsterisk = await checkAsteriskPresent(page);
+    if (!hasAsterisk) return true;
+    await page.waitForTimeout(300);
+  }
+  return false;
 }
 
 // ===== HTTP サーバー =====

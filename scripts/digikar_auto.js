@@ -383,18 +383,25 @@ async function processOneKarte(page, fullUrl) {
     return 'failed';
   }
 
-  // ===== ￥ボタン（下書き保存） =====
+  // ===== ￥ボタン（下書き保存）— 条件C: アスタリスク消失 =====
+  const hadAsterisk = await checkAsteriskPresent(page);
+  console.log(`    ￥押下前 アスタリスク: ${hadAsterisk ? 'あり' : 'なし'}`);
+
   try {
     await clickYenButton(page);
   } catch (e) {
     console.error(`  ✗ ￥ボタン失敗: ${e.message}`);
     return 'failed';
   }
-  await page.waitForTimeout(1000);
 
-  // ===== 保存成功の検証: ￥押下後にページ状態を確認 =====
-  // 下書き保存後は右パネルの状態が変化する（保存済み表示になる等）
-  // ここでは簡易的にエラーダイアログが出ていないことを確認
+  // アスタリスク消失を待つ
+  const asteriskGone = await waitForAsteriskGone(page, 10000);
+  if (!asteriskGone) {
+    console.error('  ✗ ￥押下後も「*」が消えない → 保存未完了');
+    return 'failed';
+  }
+
+  // エラーダイアログチェック
   const hasError = await page.evaluate(() => {
     const errorDialog = document.querySelector('[role="alertdialog"], [role="alert"]');
     if (errorDialog) {
@@ -408,7 +415,7 @@ async function processOneKarte(page, fullUrl) {
     return 'failed';
   }
 
-  console.log('  ✓ ￥ 下書き保存 完了');
+  console.log('  ✓ 下書き保存 完了 (主訴✓ 処置✓ 保存✓)');
   return 'saved';
 }
 
@@ -418,59 +425,62 @@ async function processOneKarte(page, fullUrl) {
  */
 async function doCopyButtonsWithVerify(page) {
   const result = { shuso: false, shochi: false };
-  const MAX_RETRIES = 2;
+  const MAX_RETRIES = 5;
 
   // --- 主訴・所見 ---
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
+      const before = await getSectionSnapshot(page, '主訴・所見');
+      console.log(`    主訴・所見 複写前: ${before.contentLength}文字`);
+
       await clickSectionCopyButton(page, '主訴・所見');
-      await page.waitForTimeout(1000);
-      // 複写ボタンクリック後、右パネルに内容が入ったかを簡易チェック
-      const hasContent = await checkSectionHasContent(page, '主訴');
-      if (hasContent) {
+
+      const changed = await waitForSectionChange(page, '主訴・所見', before, 5000);
+      if (changed) {
+        const after = await getSectionSnapshot(page, '主訴・所見');
+        console.log(`    主訴・所見 複写後: ${after.contentLength}文字 (差分+${after.contentLength - before.contentLength})`);
         console.log('  ✓ 主訴・所見 複写');
         result.shuso = true;
         break;
-      } else if (attempt < MAX_RETRIES) {
-        console.warn(`  ⚠ 主訴・所見 複写内容未反映 → リトライ (${attempt}/${MAX_RETRIES})`);
-        await page.waitForTimeout(500);
       } else {
-        console.warn(`  ⚠ 主訴・所見 複写内容未反映 (${MAX_RETRIES}回試行)`);
+        console.warn(`  ⚠ 主訴・所見 DOM変化なし → リトライ (${attempt}/${MAX_RETRIES})`);
+        await page.waitForTimeout(500);
       }
     } catch (e) {
-      if (attempt < MAX_RETRIES) {
-        console.warn(`  ⚠ 主訴・所見: ${e.message} → リトライ (${attempt}/${MAX_RETRIES})`);
-        await page.waitForTimeout(500);
-      } else {
-        console.warn(`  ⚠ 主訴・所見: ${e.message} (${MAX_RETRIES}回試行)`);
-      }
+      console.warn(`  ⚠ 主訴・所見: ${e.message} → リトライ (${attempt}/${MAX_RETRIES})`);
+      await page.waitForTimeout(500);
     }
+  }
+  if (!result.shuso) {
+    console.error(`  ✗ 主訴・所見 複写失敗 (${MAX_RETRIES}回試行)`);
   }
 
   // --- 処置・行為 ---
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
+      const before = await getSectionSnapshot(page, '処置・行為');
+      console.log(`    処置・行為 複写前: ${before.contentLength}文字`);
+
       await clickSectionCopyButton(page, '処置・行為');
-      await page.waitForTimeout(1000);
-      const hasContent = await checkSectionHasContent(page, '処置');
-      if (hasContent) {
+
+      const changed = await waitForSectionChange(page, '処置・行為', before, 5000);
+      if (changed) {
+        const after = await getSectionSnapshot(page, '処置・行為');
+        console.log(`    処置・行為 複写後: ${after.contentLength}文字 (差分+${after.contentLength - before.contentLength})`);
         console.log('  ✓ 処置・行為 複写');
         result.shochi = true;
         break;
-      } else if (attempt < MAX_RETRIES) {
-        console.warn(`  ⚠ 処置・行為 複写内容未反映 → リトライ (${attempt}/${MAX_RETRIES})`);
-        await page.waitForTimeout(500);
       } else {
-        console.warn(`  ⚠ 処置・行為 複写内容未反映 (${MAX_RETRIES}回試行)`);
+        console.warn(`  ⚠ 処置・行為 DOM変化なし → リトライ (${attempt}/${MAX_RETRIES})`);
+        await page.waitForTimeout(500);
       }
     } catch (e) {
-      if (attempt < MAX_RETRIES) {
-        console.warn(`  ⚠ 処置・行為: ${e.message} → リトライ (${attempt}/${MAX_RETRIES})`);
-        await page.waitForTimeout(500);
-      } else {
-        console.warn(`  ⚠ 処置・行為: ${e.message} (${MAX_RETRIES}回試行)`);
-      }
+      console.warn(`  ⚠ 処置・行為: ${e.message} → リトライ (${attempt}/${MAX_RETRIES})`);
+      await page.waitForTimeout(500);
     }
+  }
+  if (!result.shochi) {
+    console.error(`  ✗ 処置・行為 複写失敗 (${MAX_RETRIES}回試行)`);
   }
 
   return result;
@@ -513,50 +523,81 @@ async function checkEditingAreaEmpty(page) {
 }
 
 /**
- * 右パネルの特定セクション付近にテキスト内容があるかチェック
- * keyword: '主訴' or '処置'
+ * セクション（主訴・所見 or 処置・行為）のコンテンツスナップショットを取得
+ * 見出しテキストを含む親divを起点に、ヘッダー以外の子要素のtextContentを返す
  */
-async function checkSectionHasContent(page, keyword) {
-  return await page.evaluate((kw) => {
-    // 右パネル（left >= 530）でキーワード付近のテキストを探す
-    const ignoreLabels = ['主訴・所見', '処置・行為', 'キーワード', '下書き', '未承認',
-      'シェーマ追加', '処方箋備考', '適応症追加', '心療内科', '木村友哉',
-      '複写', '保存', '削除', '承認'];
+async function getSectionSnapshot(page, sectionTitle) {
+  return await page.evaluate((title) => {
+    const spans = document.querySelectorAll('span');
+    for (const span of spans) {
+      if (span.textContent.trim() !== title) continue;
+      const headerDiv = span.parentElement;
+      if (!headerDiv || headerDiv.tagName !== 'DIV') continue;
+      const svgPath = headerDiv.querySelector('svg path');
+      if (!svgPath) continue;
+      const d = svgPath.getAttribute('d') || '';
+      if (!d.startsWith('M15 18v-4.5H9')) continue;
+      const container = headerDiv.parentElement;
+      if (!container) continue;
+      let contentText = '';
+      for (const child of container.children) {
+        if (child === headerDiv) continue;
+        contentText += (child.textContent || '') + ' ';
+      }
+      contentText = contentText.trim();
+      return { contentText, contentLength: contentText.length };
+    }
+    return { contentText: '', contentLength: 0 };
+  }, sectionTitle);
+}
 
-    // まず右パネル内のセクションヘッダー位置を特定
-    let sectionTop = 0;
-    let sectionBottom = 2000;
+/**
+ * セクションのコンテンツが変化するまで待機
+ */
+async function waitForSectionChange(page, sectionTitle, beforeSnapshot, timeoutMs) {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeoutMs) {
+    const current = await getSectionSnapshot(page, sectionTitle);
+    if (current.contentLength > beforeSnapshot.contentLength + 5 &&
+        current.contentText !== beforeSnapshot.contentText) {
+      return true;
+    }
+    await page.waitForTimeout(300);
+  }
+  return false;
+}
+
+/**
+ * タブバーにアスタリスク（*）が存在するかチェック
+ */
+async function checkAsteriskPresent(page) {
+  return await page.evaluate(() => {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node;
     while (node = walker.nextNode()) {
       const el = node.parentElement;
       if (!el) continue;
-      const text = node.textContent.trim();
-      if (text.includes(kw) && text.length < 20) {
-        const rect = el.getBoundingClientRect();
-        if (rect.left >= 530 && rect.width > 0) {
-          sectionTop = rect.top;
-          sectionBottom = sectionTop + 400; // セクション領域
-          break;
-        }
-      }
-    }
-
-    // セクション領域内で実質的テキストを探す
-    const walker2 = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    while (node = walker2.nextNode()) {
-      const el = node.parentElement;
-      if (!el) continue;
       const rect = el.getBoundingClientRect();
-      if (rect.left < 530 || rect.width === 0 || rect.height === 0) continue;
-      if (rect.top < sectionTop + 20 || rect.top > sectionBottom) continue;
+      if (rect.top > 60 || rect.bottom < 0) continue;
+      if (rect.width === 0 || rect.height === 0) continue;
       const t = node.textContent.trim();
-      if (t.length > 2 && !ignoreLabels.some(l => t.includes(l))) {
-        return true;
-      }
+      if (t.startsWith('*') && t.length > 1) return true;
     }
     return false;
-  }, keyword);
+  });
+}
+
+/**
+ * アスタリスク（*）が消えるまで待機
+ */
+async function waitForAsteriskGone(page, timeoutMs) {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeoutMs) {
+    const hasAsterisk = await checkAsteriskPresent(page);
+    if (!hasAsterisk) return true;
+    await page.waitForTimeout(300);
+  }
+  return false;
 }
 
 /**

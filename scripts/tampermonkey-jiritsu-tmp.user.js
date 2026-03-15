@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      3.5.1
+// @version      4.0.0
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -15,13 +15,8 @@
 
   // ══════════════════════════════════════════════════════════════
   // デバッグモード（true にすると詳細ログが出る）
-  // 通常ログだけ見たい場合は localStorage.setItem("jiritsu_tmp_log", "1")
   // ══════════════════════════════════════════════════════════════
-  const DEBUG = false;
-  const INFO_LOG = DEBUG || window.localStorage.getItem("jiritsu_tmp_log") === "1";
-  const DEFAULT_WAIT_INTERVAL = 60;
-  const ENSURE_BUTTON_DEBOUNCE_MS = 120;
-  const URL_WATCH_INTERVAL_MS = 1500;
+  const DEBUG = true;
 
   // ══════════════════════════════════════════════════════════════
   // 業務定数
@@ -56,13 +51,27 @@
     saveIconPath: 'path[d="M17 3H3v18h18V7zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3m3-10H5V5h10z"]',
     kouhi1Select: 'select[name*="kouhi1"], select[name*="public1"]',
     kouhi2Select: 'select[name*="kouhi2"], select[name*="public2"]',
+
+    // Phase 2 専用セレクタ
+    // カルテ編集ボタン（鉛筆マーク）
+    karteEditButton: '#root > div > div.css-uaysch > div.css-9vboi8 > div.css-116vn3d > div.css-16bq4yl > div.css-ztkqqy > div.css-rr4en0 > span > button',
+    karteEditPencilPath: 'path[d^="M19.575 9.326"]',
+    // カルテ更新モーダル内の公費1 select
+    karteUpdateKouhi1Select: 'select.css-1poodrh',
+    // 会計ボタン（￥マーク）
+    yenButton: '#root > div > div.css-uaysch > div.css-eougxq > div.css-173zpu7 > div > span:nth-child(2) > button',
+    yenButtonPath: 'path[d^="M4.65 4h4.905"]',
+    // 患者一覧テーブル
+    patientListTable: 'div.css-15mudl3 > table > tbody',
+    // 予約編集モーダルの公費1 select
+    reservationKouhi1Select: 'select[name="expenseAndBurden1"]',
   };
 
   // ══════════════════════════════════════════════════════════════
   // ログユーティリティ
   // ══════════════════════════════════════════════════════════════
   const P = "[JIRITSU_TMP]";
-  const log   = (...a) => { if (INFO_LOG) console.log(P, ...a); };
+  const log   = (...a) => console.log(P, ...a);
   const debug = (...a) => { if (DEBUG) console.log(P, "[DEBUG]", ...a); };
   const warn  = (...a) => console.warn(P, ...a);
   const error = (...a) => console.error(P, ...a);
@@ -92,56 +101,29 @@
   // ══════════════════════════════════════════════════════════════
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  function normalizeWaitOptions(intervalOrOptions) {
-    if (typeof intervalOrOptions === "number") {
-      return { interval: intervalOrOptions };
-    }
-    return intervalOrOptions || {};
-  }
-
   /** MutationObserver + polling ハイブリッド — DOM変化を即座に検知 */
-  function waitForElement(finder, timeout = 6000, intervalOrOptions = DEFAULT_WAIT_INTERVAL) {
+  function waitForElement(finder, timeout = 6000, interval = 30) {
     return new Promise((resolve, reject) => {
-      const {
-        interval = DEFAULT_WAIT_INTERVAL,
-        root = document.body,
-        observeAttributes = false,
-      } = normalizeWaitOptions(intervalOrOptions);
       const el = finder();
       if (el) return resolve(el);
       let done = false;
       const cleanup = () => { done = true; observer.disconnect(); clearTimeout(timer); clearInterval(poller); };
       const found = () => { const el = finder(); if (el && !done) { cleanup(); resolve(el); return true; } return false; };
       const observer = new MutationObserver(() => found());
-      observer.observe(root, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-        attributes: observeAttributes,
-      });
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
       const poller = setInterval(() => found(), interval);
       const timer = setTimeout(() => { if (!done) { cleanup(); reject(new Error(`waitForElement timeout (${timeout}ms)`)); } }, timeout);
     });
   }
 
-  function waitForCondition(fn, timeout = 6000, intervalOrOptions = DEFAULT_WAIT_INTERVAL) {
+  function waitForCondition(fn, timeout = 6000, interval = 30) {
     return new Promise((resolve, reject) => {
-      const {
-        interval = DEFAULT_WAIT_INTERVAL,
-        root = document.body,
-        observeAttributes = false,
-      } = normalizeWaitOptions(intervalOrOptions);
       if (fn()) return resolve(true);
       let done = false;
       const cleanup = () => { done = true; observer.disconnect(); clearTimeout(timer); clearInterval(poller); };
       const check = () => { if (fn() && !done) { cleanup(); resolve(true); return true; } return false; };
       const observer = new MutationObserver(() => check());
-      observer.observe(root, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-        attributes: observeAttributes,
-      });
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
       const poller = setInterval(() => check(), interval);
       const timer = setTimeout(() => { if (!done) { cleanup(); reject(new Error(`waitForCondition timeout (${timeout}ms)`)); } }, timeout);
     });
@@ -502,69 +484,6 @@
     return path?.closest("button, a, [role='button']") || null;
   }
 
-  function findVisibleTextElements(text, scope = document.body) {
-    const hits = [];
-    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
-    while (walker.nextNode()) {
-      const node = walker.currentNode;
-      if (!node.textContent.trim().includes(text)) continue;
-      const el = node.parentElement;
-      if (!isVisible(el)) continue;
-      if (el.closest('[class*="modal"], [class*="Modal"], [role="dialog"]')) continue;
-      hits.push(el);
-    }
-    return hits;
-  }
-
-  function getVisibleActionButtons(scope) {
-    if (!scope) return [];
-    return Array.from(scope.querySelectorAll("button, a, [role='button']")).filter(
-      (btn) => isVisible(btn) && !btn.closest('[class*="modal"], [class*="Modal"], [role="dialog"]')
-    );
-  }
-
-  function isLikelyEditButton(btn) {
-    if (!btn) return false;
-
-    try {
-      if (btn.matches(SELECTORS.editPencilBtn)) return true;
-    } catch (e) {
-      debug("edit selector match failed", e);
-    }
-
-    const meta = [
-      btn.getAttribute("title"),
-      btn.getAttribute("aria-label"),
-      btn.className?.toString?.(),
-      btn.textContent,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    if (meta.includes("編集") || meta.includes("edit") || meta.includes("pencil")) return true;
-
-    const svgPath = Array.from(btn.querySelectorAll("path"))
-      .map((path) => path.getAttribute("d") || "")
-      .join(" ");
-    return svgPath.includes("17.25") && svgPath.includes("3.75");
-  }
-
-  function closeUnexpectedModalIfNeeded() {
-    const anyModal = document.querySelector('[class*="modal"], [role="dialog"]');
-    if (!anyModal) return false;
-
-    const closeBtn =
-      anyModal.querySelector('[aria-label="close"], [class*="close"]') ||
-      findButtonByText("×", anyModal) ||
-      findButtonByText("✕", anyModal) ||
-      findButtonByText("閉じる", anyModal) ||
-      findButtonByText("キャンセル", anyModal);
-
-    if (!closeBtn) return false;
-    safeClick(closeBtn);
-    return true;
-  }
-
   function findModalCloseButton(modal) {
     if (!modal) return null;
 
@@ -638,82 +557,6 @@
     return false;
   }
 
-  async function tryOpenChartUpdateFromButton(btn, reason) {
-    if (!btn) return null;
-
-    safeClick(btn);
-    log(`${reason} をクリック`);
-
-    try {
-      const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 2000);
-      log(`カルテ更新モーダルが開きました（${reason}）`);
-      return modal;
-    } catch (_) {}
-
-    if (closeUnexpectedModalIfNeeded()) {
-      await sleep(100);
-    }
-
-    return null;
-  }
-
-  function findPublicExpenseRowEditButton(publicExpenseNumber = TEMP_FUTANSHA) {
-    const scores = new Map();
-    const hitElements = findVisibleTextElements(publicExpenseNumber);
-
-    for (const hitEl of hitElements) {
-      let container = hitEl;
-      for (let depth = 0; depth < 6 && container; depth++) {
-        const text = container.textContent || "";
-        if (text.includes(publicExpenseNumber)) {
-          const buttons = getVisibleActionButtons(container).filter((btn) => btn.querySelector("svg"));
-          if (buttons.length > 0) {
-            const textPenalty = Math.min(text.trim().length, 160) / 4;
-            buttons.forEach((btn, index) => {
-              let score = 240 - depth * 20 - textPenalty;
-              if (isLikelyEditButton(btn)) score += 120;
-              if (index === buttons.length - 1) score += 30;
-              if (buttons.length === 2) score += 15;
-              const prev = scores.get(btn) ?? Number.NEGATIVE_INFINITY;
-              if (score > prev) scores.set(btn, score);
-            });
-          }
-        }
-        container = container.parentElement;
-      }
-    }
-
-    const ranked = Array.from(scores.entries()).sort((a, b) => b[1] - a[1]);
-    if (DEBUG && ranked.length > 0) {
-      debug(
-        "findPublicExpenseRowEditButton ranked:",
-        ranked.slice(0, 5).map(([btn, score]) => ({
-          score,
-          html: btn.outerHTML.substring(0, 120),
-        }))
-      );
-    }
-    return ranked[0]?.[0] || null;
-  }
-
-  function findDirectChartUpdateEditButton() {
-    return (
-      queryVisible(SELECTORS.chartUpdateEntryEditButton) ||
-      findButtonBySvgSelector(SELECTORS.editIconPath)
-    );
-  }
-
-  function findTemporaryJiritsuOption(select) {
-    if (!select) return null;
-    for (const opt of select.options) {
-      const text = opt.textContent || "";
-      if (text.includes(TEMP_FUTANSHA) || text.includes(KOUHI_TYPE_TEXT)) {
-        return opt;
-      }
-    }
-    return null;
-  }
-
   function findNumberedSelect(scope, rowNumber) {
     if (!scope) return null;
 
@@ -730,50 +573,6 @@
     }
 
     return null;
-  }
-
-  async function clickChartTemporarySaveButton() {
-    const saveBtn = await waitForElement(
-      () => queryVisible(SELECTORS.chartTempSaveButton) || findButtonBySvgSelector(SELECTORS.saveIconPath),
-      6000,
-      100
-    ).catch(() => null);
-
-    if (!saveBtn) throw new Error("一時保存ボタンが見つかりません");
-
-    safeClick(saveBtn);
-    log("一時保存ボタンをクリック");
-
-    // 「予約済みのカルテは下書きで保存されます」ダイアログを処理（即座に探す）
-    await handleDraftSaveDialog();
-  }
-
-  /**
-   * 下書き保存ダイアログ（「予約済みのカルテは下書きで保存されます」）を自動処理
-   * 「下書き保存」ボタンをクリックする
-   */
-  async function handleDraftSaveDialog() {
-    log("下書き保存ダイアログを探索...");
-
-    // 「下書き保存」ボタンを探す（ダイアログ内）
-    const draftBtn = await waitForElement(() => {
-      return findButtonByText("下書き保存");
-    }, 2000).catch(() => null);
-
-    if (draftBtn) {
-      safeClick(draftBtn);
-      log("「下書き保存」ボタンをクリック");
-
-      // ダイアログが閉じるのを待つ
-      try {
-        await waitForCondition(() => !findButtonByText("下書き保存"), 5000, 100);
-        log("下書き保存ダイアログが閉じました ✓");
-      } catch (e) {
-        warn("下書き保存ダイアログがまだ開いている可能性があります");
-      }
-    } else {
-      debug("下書き保存ダイアログは表示されませんでした（予約なし患者の可能性）");
-    }
   }
 
   /**
@@ -819,99 +618,6 @@
     }
 
     return null;
-  }
-
-  async function clickInsuranceCellInChartList() {
-    const cell = await waitForElement(() => findInsuranceCellInChartList(), 6000).catch(() => null);
-    if (!cell) throw new Error("カルテ一覧の保険セルが見つかりません");
-
-    safeClick(cell);
-    log("カルテ一覧の保険セルをクリック");
-
-    // 予約編集モーダルが開くか短時間待つ
-    try {
-      await waitForElement(() => findModalByTitle("予約編集"), 1500);
-    } catch (_) {
-      // 開かなければ編集アイコンもクリック
-      const editBtn = cell.querySelector(SELECTORS.chartListInsuranceEditButton);
-      if (editBtn) {
-        safeClick(editBtn);
-        log("保険セル内の編集アイコンもクリック");
-      }
-    }
-  }
-
-  /**
-   * 予約編集モーダルで公費1に21(自立支援)を選択し、更新ボタンを押す
-   */
-  async function selectKouhi1InReservationEditAndUpdate() {
-    log("STEP: 予約編集モーダルで公費1に自立仮番をセット");
-
-    // 予約編集モーダルが開くのを待つ
-    const modal = await waitForElement(() => findModalByTitle("予約編集"), 5000).catch(() => null);
-    if (!modal) throw new Error("予約編集モーダルが見つかりません");
-
-    // 公費1の select を探す
-    // 方法1: name="expenseAndBurden1" で直接探す
-    let kouhi1Select = modal.querySelector('select[name="expenseAndBurden1"]');
-
-    // 方法2: ラベル "1" の行にある select を探す
-    if (!kouhi1Select) {
-      kouhi1Select = findNumberedSelect(modal, "1");
-    }
-
-    // 方法3: 21000000/精神通院 のオプションを持つ select を探す
-    if (!kouhi1Select) {
-      const selects = modal.querySelectorAll("select");
-      for (const sel of selects) {
-        const opt = findTemporaryJiritsuOption(sel);
-        if (opt) {
-          kouhi1Select = sel;
-          break;
-        }
-      }
-    }
-
-    if (!kouhi1Select) {
-      warn("予約編集モーダルで公費1の select が見つかりません");
-      showToast("予約編集で公費1を手動で選択してください", "warn");
-      return;
-    }
-
-    // 21000000/精神通院 のオプションを選択
-    const targetOpt = findTemporaryJiritsuOption(kouhi1Select);
-    if (targetOpt) {
-      if (kouhi1Select.value !== targetOpt.value) {
-        setSelectValue(kouhi1Select, targetOpt.value);
-        log(`予約編集 公費1 → "${targetOpt.textContent.trim().substring(0, 50)}" を選択`);
-      } else {
-        log(`予約編集 公費1: 既に "${targetOpt.textContent.trim().substring(0, 50)}" が選択済み ✓`);
-      }
-    } else {
-      warn("予約編集モーダルで21000000/精神通院のオプションが見つかりません");
-      showToast("予約編集で公費1を手動で選択してください", "warn");
-      return;
-    }
-    // 更新ボタンをクリック
-    const updateBtn = findButtonByText("更新", modal);
-    if (!updateBtn) throw new Error("予約編集の「更新」ボタンが見つかりません");
-
-    safeClick(updateBtn);
-    log("予約編集の更新ボタンをクリック");
-
-    // モーダルが閉じるのを待つ（確認ダイアログが出た場合も対応）
-    try {
-      await waitForCondition(() => !findModalByTitle("予約編集"), 4000);
-      log("予約編集モーダルが閉じました ✓");
-    } catch (_) {
-      await handleCustomConfirmDialog();
-      try {
-        await waitForCondition(() => !findModalByTitle("予約編集"), 3000);
-      } catch (__) {
-        warn("予約編集モーダルが閉じません。手動で確認してください。");
-        showToast("予約編集を確認してください", "warn");
-      }
-    }
   }
 
   let confirmHookActive = false;
@@ -1301,25 +1007,6 @@
     return false;
   }
 
-  async function waitForPhase2Ready() {
-    log("Phase 2 準備: 公費一覧の反映待ち...");
-    try {
-      await waitForCondition(() => !!findTextElement(TEMP_FUTANSHA), 1500);
-      log(`公費一覧に ${TEMP_FUTANSHA} を検出 ✓`);
-    } catch (_) {
-      debug("公費一覧の反映待ちがタイムアウト、継続");
-    }
-  }
-
-  async function waitForBurdenRows(modal) {
-    try {
-      await waitForCondition(
-        () => !!findTextElement("1回あたり", modal) || !!findTextElement("1月あたり", modal),
-        1000
-      );
-    } catch (_) {}
-  }
-
   // ══════════════════════════════════════════════════════════════
   // STEP A: 公費追加モーダルを開く
   // ══════════════════════════════════════════════════════════════
@@ -1472,6 +1159,7 @@
       // モーダル内の全チェックボックスを出力
       debug("  モーダル内 checkbox一覧:", modal.querySelectorAll('input[type="checkbox"]'));
     }
+    await sleep(50);
     // ────────────────────────────
     // F. 有効期間（開始日・終了日）
     //    二段構え: 直接入力優先 → カレンダーUI fallback
@@ -1514,6 +1202,7 @@
         `type=${i.type}, name=${i.name}, placeholder=${i.placeholder}, value="${i.value}"`
       ));
     }
+    await sleep(300);
     // ────────────────────────────
     // G/H. 患者自己負担
     // ────────────────────────────
@@ -1553,7 +1242,7 @@
       }
 
       // 負担あり選択後、テーブルが表示/活性化されるのを待つ
-      await waitForBurdenRows(modal);
+      await sleep(300);
 
       // G-1: 1回あたり 上限 10%
       log("  G: 1回あたり 上限 10% を入力");
@@ -1575,6 +1264,7 @@
       } else {
         warn("  G: 「1回あたり」テキストが見つかりません");
       }
+      await sleep(50);
       // G-2: 1月あたり 上限 20000円
       log("  G: 1月あたり 上限 20000円 を入力");
       const row1month = findTextElement("1月あたり", modal);
@@ -1630,6 +1320,7 @@
       }
     }
 
+    await sleep(100);
     log("フォーム入力完了");
   }
 
@@ -1676,299 +1367,363 @@
   }
 
   // ══════════════════════════════════════════════════════════════
-  // カルテ更新（Phase 2 スタブ — 今回は最低限のみ）
+  // Phase 2: カルテ更新 → 会計 → 患者一覧 → 保険編集
   // ══════════════════════════════════════════════════════════════
-  /**
-   * ページ上の全SVGボタンを試行して「カルテ更新」モーダルを開く
-   * 方法: 医療保険セクションや公費セクション周辺のSVGボタン（鉛筆マーク）を
-   *       順番にクリックし、カルテ更新モーダルが開くものを探す
-   */
-  async function openChartUpdateModal() {
-    await closePublicExpenseHistoryModalIfPresent();
 
-    const directEditBtn = findDirectChartUpdateEditButton();
-    const directEditModal = await tryOpenChartUpdateFromButton(directEditBtn, "direct chart edit button");
-    if (directEditModal) return directEditModal;
-
-    // Method 0: prefer the edit button on the newly added 21000000 row.
-    const publicRowEditBtn = await waitForElement(
-      () => findPublicExpenseRowEditButton(TEMP_FUTANSHA),
-      3000
-    ).catch(() => null);
-    const publicRowModal = await tryOpenChartUpdateFromButton(
-      publicRowEditBtn,
-      `public expense row ${TEMP_FUTANSHA} edit button`
-    );
-    if (publicRowModal) return publicRowModal;
-    log("STEP: カルテ更新モーダルを開く（Phase 2）");
-
-    /** クリック→カルテ更新モーダル出現を待つ共通処理 (waitTimeMs以内) */
-    async function clickAndWaitForChartModal(target, label, waitMs = 1500) {
-      safeClick(target);
-      log(`${label} をクリック`);
-      try {
-        const m = await waitForElement(() => findModalByTitle("カルテ更新"), waitMs);
-        log(`カルテ更新モーダルが開きました（${label}）`);
-        return m;
-      } catch (_) {}
-      // 別モーダルが出たら閉じる
-      const any = document.querySelector('[class*="modal"], [role="dialog"]');
-      if (any) {
-        const cb = any.querySelector('[aria-label="close"], [class*="close"]')
-          || findButtonByText("×", any) || findButtonByText("✕", any);
-        if (cb) { safeClick(cb); await sleep(80); }
-      }
-      return null;
-    }
-
-    // === 方法1: 「編集」テキストを含むクリック可能な要素 ===
-    log("方法1: 「編集」要素を探索");
-    const editEl = findTextElement("編集");
-    if (editEl && editEl.offsetParent !== null &&
-        !editEl.closest('[class*="modal"], [class*="Modal"], [role="dialog"]')) {
-      const clickTarget = editEl.closest("button, a, [role='button']") || editEl;
-      const m1 = await clickAndWaitForChartModal(clickTarget, "編集ボタン");
-      if (m1) return m1;
-    }
-
-    // === 方法2: 医療保険セクションの鉛筆マーク ===
-    log("方法2: 医療保険セクションの鉛筆マークを探索");
-    const insuranceEl = findTextElement("医療保険");
-    if (insuranceEl) {
-      let section = insuranceEl;
-      for (let i = 0; i < 6; i++) {
-        section = section.parentElement;
-        if (!section) break;
-        const svgBtns = Array.from(
-          section.querySelectorAll("button, a, [role='button']")
-        ).filter((b) => b.querySelector("svg") && b.offsetParent !== null);
-        if (svgBtns.length > 0) {
-          for (let j = svgBtns.length - 1; j >= 0; j--) {
-            const m2 = await clickAndWaitForChartModal(svgBtns[j], `医療保険SVG[${j}]`);
-            if (m2) return m2;
-          }
-          break;
-        }
+  /** select 内で value または TEMP_FUTANSHA テキストを持つ option を選択する共通処理 */
+  function selectKouhi21Option(sel) {
+    if (!sel) return false;
+    // 優先: value="2800183"（実DB上のID）
+    for (const opt of sel.options) {
+      if (opt.value === "2800183") {
+        setSelectValue(sel, "2800183");
+        log(`公費1 → value=2800183, text="${opt.textContent.trim().substring(0, 60)}" を選択 ✓`);
+        return true;
       }
     }
-
-    // === 方法3: 公費行の鉛筆マーク（21000000行） ===
-    log("方法3: 公費行(21000000)の鉛筆マークを探索");
-    const futanshaEl = findTextElement(TEMP_FUTANSHA);
-    if (futanshaEl) {
-      let container = futanshaEl;
-      for (let i = 0; i < 5; i++) {
-        container = container.parentElement;
-        if (!container) break;
-        const svgBtns = Array.from(
-          container.querySelectorAll("button, a, [role='button']")
-        ).filter((b) => b.querySelector("svg") && b.offsetParent !== null);
-        if (svgBtns.length > 0) {
-          for (let j = svgBtns.length - 1; j >= 0; j--) {
-            const m3 = await clickAndWaitForChartModal(svgBtns[j], `公費行SVG[${j}]`);
-            if (m3) return m3;
-          }
-          break;
-        }
+    // フォールバック: テキストに 21000000 or 精神通院 を含む option
+    for (const opt of sel.options) {
+      if (opt.textContent.includes(TEMP_FUTANSHA) || opt.textContent.includes(KOUHI_TYPE_TEXT)) {
+        setSelectValue(sel, opt.value);
+        log(`公費1 → value=${opt.value}, text="${opt.textContent.trim().substring(0, 60)}" を選択 ✓`);
+        return true;
       }
     }
-
-    // === 方法4: ページ上の全SVGボタンを総当たり ===
-    log("方法4: 全ページのSVGボタンを総当たり");
-    const allBtns = document.querySelectorAll("button, a, [role='button']");
-    for (const btn of allBtns) {
-      if (!btn.querySelector("svg") || btn.offsetParent === null) continue;
-      if (btn.closest('[class*="modal"], [role="dialog"]')) continue;
-      const m4 = await clickAndWaitForChartModal(btn, "総当たりSVG", 1000);
-      if (m4) return m4;
-    }
-
-    throw new Error("カルテ更新モーダルの開き方が見つかりません。手動で鉛筆マークをクリックしてください。");
+    return false;
   }
 
-  async function selectJiritsuToPublic1() {
-    log("STEP: 公費1に自立仮番をセット");
+  /**
+   * Phase2-1: カルテ編集ボタン（鉛筆マーク）をクリックして「カルテ更新」モーダルを開く
+   */
+  async function phase2_openKarteUpdateModal() {
+    log("Phase2-1: カルテ編集ボタンをクリック");
+
+    // 公費更新履歴モーダルが出ていたら先に閉じる
+    await closePublicExpenseHistoryModalIfPresent();
+
+    // 最優先: 正確なセレクタ
+    let editBtn = queryVisible(SELECTORS.karteEditButton);
+
+    // フォールバック1: SVG path で探す
+    if (!editBtn) {
+      debug("karteEditButton セレクタ失敗 → SVG path で探索");
+      editBtn = findButtonBySvgSelector(SELECTORS.karteEditPencilPath);
+    }
+
+    // フォールバック2: 既存の chartUpdateEntryEditButton セレクタ
+    if (!editBtn) {
+      debug("SVG path 失敗 → chartUpdateEntryEditButton で探索");
+      editBtn = queryVisible(SELECTORS.chartUpdateEntryEditButton);
+    }
+
+    if (!editBtn) {
+      throw new Error("カルテ編集ボタン（鉛筆マーク）が見つかりません");
+    }
+
+    safeClick(editBtn);
+    log("カルテ編集ボタンをクリック");
+
+    // 「カルテ更新」モーダルが開くのを待つ
+    const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 5000);
+    log("カルテ更新モーダルが開きました ✓");
+    return modal;
+  }
+
+  /**
+   * Phase2-2: カルテ更新モーダルで公費1を21公費に変更
+   */
+  async function phase2_selectKouhi1InKarteUpdate() {
+    log("Phase2-2: カルテ更新モーダルで公費1を選択");
+
     const modal = findModalByTitle("カルテ更新");
     if (!modal) throw new Error("カルテ更新モーダルが見つかりません");
 
-    const selects = modal.querySelectorAll("select");
-    debug(`カルテ更新モーダル内の select: ${selects.length} 個`);
-    if (DEBUG) {
-      Array.from(selects).forEach((sel, i) => {
-        const txt = sel.options[sel.selectedIndex]?.textContent?.substring(0, 60) || "";
-        debug(`  select[${i}]: selected="${txt}", options=${sel.options.length}`);
-      });
+    // 最優先: select.css-1poodrh（カルテ更新モーダル内の公費1）
+    let kouhi1Sel = queryVisible(SELECTORS.karteUpdateKouhi1Select, modal);
+
+    // フォールバック: ラベル "1" の行にある select
+    if (!kouhi1Sel) {
+      debug("css-1poodrh 失敗 → ラベル '1' 行で探索");
+      kouhi1Sel = findNumberedSelect(modal, "1");
     }
 
-    // 公費1の select を見つけて 21000000 のオプションを選択する
-    // 画面構造: ラベル "1" → select（公費1）、ラベル "2" → select（公費2）、...
-    const directKouhi1 = (
-      queryVisible(SELECTORS.chartPublic1SelectExact, modal) ||
-      Array.from(modal.querySelectorAll(SELECTORS.kouhi1Select)).find((sel) => findTemporaryJiritsuOption(sel))
-    );
-    if (directKouhi1) {
-      const targetOpt = findTemporaryJiritsuOption(directKouhi1);
-      if (targetOpt) {
-        if (directKouhi1.value !== targetOpt.value) {
-          setSelectValue(directKouhi1, targetOpt.value);
-          log(`公費1(selector) → "${targetOpt.textContent.trim().substring(0, 50)}" を選択`);
-        } else {
-          log(`公費1(selector): 既に "${targetOpt.textContent.trim().substring(0, 50)}" が選択済み ✓`);
-        }
-        return;
-      }
+    // フォールバック: name="expenseAndBurden1"
+    if (!kouhi1Sel) {
+      debug("ラベル '1' 行 失敗 → name=expenseAndBurden1 で探索");
+      kouhi1Sel = modal.querySelector('select[name="expenseAndBurden1"]');
     }
 
-    const row1Select = findNumberedSelect(modal, "1");
-    if (row1Select) {
-      const targetOpt = findTemporaryJiritsuOption(row1Select);
-      if (targetOpt) {
-        if (row1Select.value !== targetOpt.value) {
-          setSelectValue(row1Select, targetOpt.value);
-          log(`公費1(row1) → "${targetOpt.textContent.trim().substring(0, 50)}" を選択`);
-        } else {
-          log(`公費1(row1): 既に "${targetOpt.textContent.trim().substring(0, 50)}" が選択済み ✓`);
-        }
-        return;
-      }
-    }
-
-    let kouhi1 = null;
-
-    for (const sel of selects) {
-      // この select に 21000000/精神通院 を含む option があるか
-      let targetOpt = null;
-      for (const opt of sel.options) {
-        if (opt.textContent.includes(TEMP_FUTANSHA) || opt.textContent.includes("精神通院")) {
-          targetOpt = opt;
-          break;
-        }
-      }
-      if (!targetOpt) continue;
-
-      // このselectが公費1行にあるか確認
-      // 方法A: 近傍に "1" テキストがある
-      const parent = sel.parentElement;
-      const grandParent = parent?.parentElement;
-      const nearText = (parent?.textContent || "") + (grandParent?.textContent || "");
-
-      // 行内の先頭テキスト要素を確認
-      const siblings = grandParent?.children || parent?.children || [];
-      let isRow1 = false;
-      for (const sib of siblings) {
-        const t = sib.textContent.trim();
-        if (t === "1") { isRow1 = true; break; }
-      }
-
-      // 方法B: selectの直前にある要素のテキストが "1"
-      const prevSib = sel.previousElementSibling || parent?.previousElementSibling;
-      if (prevSib && prevSib.textContent.trim() === "1") isRow1 = true;
-
-      // 方法C: ラベル "1" が近傍にある（findByLabel的な探索）
-      if (!isRow1) {
-        const row = sel.closest("tr, [class*='row'], [class*='Row']");
-        if (row) {
-          const firstCell = row.querySelector("td, th, span, div");
-          if (firstCell && firstCell.textContent.trim() === "1") isRow1 = true;
-        }
-      }
-
-      if (isRow1 || !kouhi1) {
-        // 既に選択されているか確認
-        if (sel.value === targetOpt.value) {
-          log(`公費1: 既に "${targetOpt.textContent.trim().substring(0, 50)}" が選択済み ✓`);
-          kouhi1 = sel;
-          break;
-        }
-        // 選択する
-        setSelectValue(sel, targetOpt.value);
-        log(`公費1 → "${targetOpt.textContent.trim().substring(0, 50)}" を選択`);
-        kouhi1 = sel;
-        if (isRow1) break; // 確実に row1 なら終了
-      }
-    }
-
-    if (!kouhi1) {
-      // フォールバック: 全 select を順番に試す
-      for (const sel of selects) {
+    // フォールバック: モーダル内全 select を走査して 21000000 option を持つものを探す
+    if (!kouhi1Sel) {
+      debug("name 失敗 → option走査で探索");
+      for (const sel of modal.querySelectorAll("select")) {
         for (const opt of sel.options) {
-          if (opt.textContent.includes(TEMP_FUTANSHA) || opt.textContent.includes("精神通院")) {
-            setSelectValue(sel, opt.value);
-            log(`公費1(fallback) → "${opt.textContent.trim().substring(0, 50)}" を選択`);
-            kouhi1 = sel;
+          if (opt.value === "2800183" || opt.textContent.includes(TEMP_FUTANSHA)) {
+            kouhi1Sel = sel;
             break;
           }
         }
-        if (kouhi1) break;
+        if (kouhi1Sel) break;
       }
     }
 
-    if (!kouhi1) {
-      warn("公費1の設定に失敗。手動で設定してください。");
-      showToast("公費1を手動で選択してください", "warn");
+    if (!kouhi1Sel) {
+      throw new Error("カルテ更新モーダルで公費1の select が見つかりません");
+    }
+
+    debug(`公費1 select 発見: class="${kouhi1Sel.className}", options=${kouhi1Sel.options.length}`);
+
+    if (!selectKouhi21Option(kouhi1Sel)) {
+      throw new Error("カルテ更新モーダルで21公費の option が見つかりません");
     }
   }
 
-  async function selectLifeProtectionToPublic2IfNeeded(isLifeProtection) {
-    if (!isLifeProtection) { log("公費2は変更なし（非生活保護）"); return; }
+  /**
+   * Phase2-3: カルテ更新モーダルの「更新」ボタンをクリック
+   */
+  async function phase2_submitKarteUpdate() {
+    log("Phase2-3: カルテ更新の更新ボタンをクリック");
 
-    log("STEP: 公費2に生活保護公費をセット");
-    const modal = findModalByTitle("カルテ更新");
-    if (!modal) return;
-
-    const selects = modal.querySelectorAll("select");
-
-    // 公費2 の select を探す（ラベル "2" の行）
-    for (const sel of selects) {
-      // 生活保護の option があるか
-      let targetOpt = null;
-      for (const opt of sel.options) {
-        if (/\b12\d{6}\b/.test(opt.textContent) || opt.textContent.includes("生活保護")) {
-          targetOpt = opt;
-          break;
-        }
-      }
-      if (!targetOpt) continue;
-
-      // "2" ラベルの行か確認
-      const row = sel.closest("tr, [class*='row'], [class*='Row']");
-      const firstCell = row?.querySelector("td, th, span, div");
-      const prevSib = sel.previousElementSibling || sel.parentElement?.previousElementSibling;
-      if (
-        (firstCell && firstCell.textContent.trim() === "2") ||
-        (prevSib && prevSib.textContent.trim() === "2")
-      ) {
-        setSelectValue(sel, targetOpt.value);
-        log(`公費2 → "${targetOpt.textContent.trim().substring(0, 50)}" を選択`);
-        return;
-      }
-    }
-    warn("公費2の設定に失敗。手動で設定してください。");
-  }
-
-  async function submitChartUpdate() {
-    log("STEP: カルテ更新を確定");
     const modal = findModalByTitle("カルテ更新");
     if (!modal) throw new Error("カルテ更新モーダルが見つかりません");
-    const btn = findButtonByText("更新", modal);
-    if (!btn) throw new Error("「更新」ボタンが見つかりません");
-    safeClick(btn);
-    log("更新ボタンをクリック");
 
-    // モーダルが閉じるのを待つ（確認ダイアログが出たら即座にOK）
+    // 最優先: data-variant="primary" の更新ボタン
+    let updateBtn = modal.querySelector('button[data-variant="primary"]');
+
+    // フォールバック: テキスト「更新」
+    if (!updateBtn || !updateBtn.textContent.includes("更新")) {
+      updateBtn = findButtonByText("更新", modal);
+    }
+
+    if (!updateBtn) throw new Error("カルテ更新の「更新」ボタンが見つかりません");
+
+    safeClick(updateBtn);
+    log("カルテ更新の更新ボタンをクリック");
+
+    // モーダルが閉じるのを待つ
     try {
       await waitForCondition(() => {
         handleCustomConfirmDialog();
         return !findModalByTitle("カルテ更新");
       }, 5000);
-      log("カルテ更新完了 ✓");
+      log("カルテ更新モーダルが閉じました ✓");
     } catch (_) {
       await handleCustomConfirmDialog();
       try {
         await waitForCondition(() => !findModalByTitle("カルテ更新"), 3000);
       } catch (__) {
-        warn("カルテ更新モーダルが閉じません。手動で確認してください。");
-        showToast("カルテ更新を確認してください", "warn");
+        throw new Error("カルテ更新モーダルが閉じません");
+      }
+    }
+  }
+
+  /**
+   * Phase2-4: 右下の会計ボタン（￥マーク）をクリック
+   */
+  async function phase2_clickYenButton() {
+    log("Phase2-4: 会計ボタン（￥マーク）をクリック");
+
+    // 最優先: 正確なセレクタ
+    let yenBtn = queryVisible(SELECTORS.yenButton);
+
+    // フォールバック: SVG path で探す
+    if (!yenBtn) {
+      debug("yenButton セレクタ失敗 → SVG path で探索");
+      yenBtn = findButtonBySvgSelector(SELECTORS.yenButtonPath);
+    }
+
+    if (!yenBtn) {
+      throw new Error("会計ボタン（￥マーク）が見つかりません");
+    }
+
+    safeClick(yenBtn);
+    log("会計ボタンをクリック ✓");
+
+    // 会計処理後の画面遷移を待つ
+    await sleep(1500);
+  }
+
+  /**
+   * カルテ画面から患者番号を取得する
+   * URL /reception/YYYYMMDD のページで、カルテ上部に表示されている患者番号を読む
+   */
+  function phase2_getPatientNumber() {
+    // カルテ画面の患者情報セクションから番号を取得
+    // スクリーンショットでは「2656」のような数字が表示されている
+    // URLから取得を試みる: /karte/patients/XXXX or /reception/YYYYMMDD
+    // → カルテ画面ではなく保険画面に居るので、テキストから探す
+
+    // 方法1: 患者番号欄（4桁の数字）を探す — ID表示エリア
+    const allText = document.body.innerText;
+    // 「患者」の近くにある数字を探す
+    const patientNumMatch = allText.match(/(?:患者(?:番号)?|ID|No)[^\d]*(\d{3,6})/);
+    if (patientNumMatch) {
+      debug(`患者番号を検出: ${patientNumMatch[1]}`);
+      return patientNumMatch[1];
+    }
+
+    return null;
+  }
+
+  /**
+   * Phase2-5: 患者一覧で同じ患者番号の行を探して保険セルをクリック
+   * @param {string} patientNumber - 患者番号（例: "2656"）
+   */
+  async function phase2_clickPatientInsuranceCell(patientNumber) {
+    log(`Phase2-5: 患者一覧で患者番号 ${patientNumber} の保険セルを探索`);
+
+    // 患者一覧テーブルが表示されるのを待つ
+    const tbody = await waitForElement(() => {
+      return queryVisible(SELECTORS.patientListTable) ||
+             document.querySelector('div.css-15mudl3 > table > tbody') ||
+             document.querySelector('table > tbody');
+    }, 8000).catch(() => null);
+
+    if (!tbody) throw new Error("患者一覧テーブルが見つかりません");
+
+    // tbody 内の tr を走査して患者番号一致の行を探す
+    let targetRow = null;
+    const rows = tbody.querySelectorAll("tr");
+    debug(`患者一覧の行数: ${rows.length}`);
+
+    for (const row of rows) {
+      const cells = row.querySelectorAll("td");
+      // 各セルのテキストに患者番号が含まれるか確認
+      for (const cell of cells) {
+        const text = cell.textContent.trim();
+        if (text === patientNumber || text.includes(patientNumber)) {
+          targetRow = row;
+          debug(`患者番号 ${patientNumber} を行内で発見: "${text}"`);
+          break;
+        }
+      }
+      if (targetRow) break;
+    }
+
+    if (!targetRow) {
+      throw new Error(`患者番号 ${patientNumber} の行が見つかりません`);
+    }
+
+    // 保険セル = td:nth-child(7)（7列目）
+    let insuranceCell = targetRow.querySelector("td:nth-child(7)");
+
+    // フォールバック: edit-icon ボタンを含む td を探す
+    if (!insuranceCell) {
+      for (const cell of targetRow.querySelectorAll("td")) {
+        if (cell.querySelector("button.edit-icon") || cell.querySelector("svg")) {
+          insuranceCell = cell;
+          break;
+        }
+      }
+    }
+
+    if (!insuranceCell) {
+      throw new Error(`患者番号 ${patientNumber} の行で保険セルが見つかりません`);
+    }
+
+    log(`保険セル発見: "${insuranceCell.textContent.trim().substring(0, 30)}"`);
+
+    // セル自体をクリック
+    safeClick(insuranceCell);
+    log("保険セルをクリック");
+
+    // 予約編集モーダルが開くか待つ
+    try {
+      await waitForElement(() => findModalByTitle("予約編集"), 2000);
+      log("予約編集モーダルが開きました ✓");
+      return;
+    } catch (_) {}
+
+    // 開かなければ edit-icon ボタンをクリック
+    const editBtn = insuranceCell.querySelector("button.edit-icon") ||
+                    insuranceCell.querySelector("button");
+    if (editBtn) {
+      safeClick(editBtn);
+      log("保険セル内の編集ボタンをクリック");
+      await waitForElement(() => findModalByTitle("予約編集"), 3000);
+      log("予約編集モーダルが開きました ✓");
+    } else {
+      throw new Error("保険セルのクリックで予約編集モーダルが開きません");
+    }
+  }
+
+  /**
+   * Phase2-6: 予約編集モーダルで公費1を21公費に変更
+   */
+  async function phase2_selectKouhi1InReservationEdit() {
+    log("Phase2-6: 予約編集モーダルで公費1を選択");
+
+    const modal = await waitForElement(() => findModalByTitle("予約編集"), 5000);
+
+    // 最優先: name="expenseAndBurden1"
+    let kouhi1Sel = modal.querySelector(SELECTORS.reservationKouhi1Select);
+
+    // フォールバック: ラベル "1" の行
+    if (!kouhi1Sel) {
+      debug("expenseAndBurden1 失敗 → ラベル '1' 行で探索");
+      kouhi1Sel = findNumberedSelect(modal, "1");
+    }
+
+    // フォールバック: option走査
+    if (!kouhi1Sel) {
+      debug("ラベル '1' 行 失敗 → option走査で探索");
+      for (const sel of modal.querySelectorAll("select")) {
+        for (const opt of sel.options) {
+          if (opt.value === "2800183" || opt.textContent.includes(TEMP_FUTANSHA)) {
+            kouhi1Sel = sel;
+            break;
+          }
+        }
+        if (kouhi1Sel) break;
+      }
+    }
+
+    if (!kouhi1Sel) {
+      throw new Error("予約編集モーダルで公費1の select が見つかりません");
+    }
+
+    debug(`予約編集 公費1 select 発見: name="${kouhi1Sel.name}", options=${kouhi1Sel.options.length}`);
+
+    if (!selectKouhi21Option(kouhi1Sel)) {
+      throw new Error("予約編集モーダルで21公費の option が見つかりません");
+    }
+  }
+
+  /**
+   * Phase2-7: 予約編集モーダルの「更新」ボタンをクリック
+   */
+  async function phase2_submitReservationEdit() {
+    log("Phase2-7: 予約編集の更新ボタンをクリック");
+
+    const modal = findModalByTitle("予約編集");
+    if (!modal) throw new Error("予約編集モーダルが見つかりません");
+
+    // 最優先: footer 内の btn-info
+    let updateBtn = modal.querySelector("footer button.btn-info");
+
+    // フォールバック: テキスト「更新」
+    if (!updateBtn) {
+      updateBtn = findButtonByText("更新", modal);
+    }
+
+    if (!updateBtn) throw new Error("予約編集の「更新」ボタンが見つかりません");
+
+    safeClick(updateBtn);
+    log("予約編集の更新ボタンをクリック");
+
+    // モーダルが閉じるのを待つ
+    try {
+      await waitForCondition(() => {
+        handleCustomConfirmDialog();
+        return !findModalByTitle("予約編集");
+      }, 5000);
+      log("予約編集モーダルが閉じました ✓");
+    } catch (_) {
+      await handleCustomConfirmDialog();
+      try {
+        await waitForCondition(() => !findModalByTitle("予約編集"), 3000);
+      } catch (__) {
+        throw new Error("予約編集モーダルが閉じません");
       }
     }
   }
@@ -2024,38 +1779,51 @@
       showToast("公費追加が完了しました！", "success");
 
       // Phase 1 完了後、ページ更新を待つ（DOM再描画 + 公費一覧反映）
-      await waitForPhase2Ready();
+      log("Phase 2 準備: ページ更新を待機...");
+      await sleep(800);
 
-      // Phase 2: カルテ更新（失敗しても Phase 1 は有効）
+      // 患者番号を Phase 2 開始前に取得（後で患者一覧から探すため）
+      const patientNumber = phase2_getPatientNumber();
+      if (patientNumber) {
+        log(`患者番号を取得: ${patientNumber}`);
+      } else {
+        warn("患者番号を取得できませんでした。患者一覧での保険セルクリックはスキップされます。");
+      }
+
+      // Phase 2: カルテ更新 → 会計 → 予約編集（失敗しても Phase 1 は有効）
       try {
+        log("===== Phase 2（カルテ更新 → 会計 → 予約編集）開始 =====");
+
         step = "カルテ更新モーダルを開く";
-        log("===== Phase 2（カルテ更新）開始 =====");
-        await openChartUpdateModal();
+        await phase2_openKarteUpdateModal();
 
-        step = "公費1に自立仮番をセット";
-        await selectJiritsuToPublic1();
-
-        step = "公費2の処理";
-        await selectLifeProtectionToPublic2IfNeeded(isLifeProtection);
+        step = "カルテ更新: 公費1に21公費をセット";
+        await phase2_selectKouhi1InKarteUpdate();
 
         step = "カルテ更新の確定";
-        await submitChartUpdate();
+        await phase2_submitKarteUpdate();
 
-        step = "カルテを一時保存";
-        await clickChartTemporarySaveButton();
+        step = "￥ボタンをクリック（会計）";
+        await phase2_clickYenButton();
 
-        // 下書き保存後、患者一覧に戻る
         step = "患者一覧に戻る";
-        log("患者一覧に戻ります...");
         await navigateBackToPatientList();
 
-        step = "カルテ一覧の保険セルを開く";
-        await clickInsuranceCellInChartList();
+        if (patientNumber) {
+          step = "患者一覧で保険セルをクリック";
+          await phase2_clickPatientInsuranceCell(patientNumber);
 
-        step = "予約編集で公費1を選択し更新";
-        await selectKouhi1InReservationEditAndUpdate();
+          step = "予約編集: 公費1に21公費をセット";
+          await phase2_selectKouhi1InReservationEdit();
 
-        log("===== Phase 2（カルテ更新）完了 =====");
+          step = "予約編集の更新";
+          await phase2_submitReservationEdit();
+        } else {
+          warn("患者番号が不明なため、予約編集ステップをスキップ");
+          showToast("予約編集の公費1は手動で設定してください", "warn");
+        }
+
+        log("===== Phase 2 完了 =====");
         showToast("全工程が完了しました！", "success");
       } catch (err2) {
         warn(`Phase 2 エラー [${step}]: ${err2.message}`);
@@ -2075,9 +1843,6 @@
   // ボタン挿入（公費セクション横のインラインボタンのみ）
   // ══════════════════════════════════════════════════════════════
   const BTN_ID = "jiritsu-tmp-btn";
-  let ensureButtonTimer = 0;
-  let observerStarted = false;
-  let lastLocationHref = location.href;
 
   /**
    * 公費セクションヘッダー（「公費 ☑現在有効 ＋」の行）を特定する
@@ -2134,14 +1899,6 @@
     log("「自立仮番」ボタンを追加（公費セクション横）");
   }
 
-  function scheduleEnsureButton(delay = ENSURE_BUTTON_DEBOUNCE_MS) {
-    if (ensureButtonTimer) return;
-    ensureButtonTimer = window.setTimeout(() => {
-      ensureButtonTimer = 0;
-      ensureButton();
-    }, delay);
-  }
-
   function setButtonBusy(busy) {
     const btn = document.getElementById(BTN_ID);
     if (!btn) return;
@@ -2154,25 +1911,9 @@
   // SPA対応: MutationObserver + 定期監視
   // ══════════════════════════════════════════════════════════════
   function startObserver() {
-    if (observerStarted) return;
-    observerStarted = true;
-
-    window.setInterval(() => {
-      const urlChanged = location.href !== lastLocationHref;
-      if (urlChanged) lastLocationHref = location.href;
-      if (urlChanged || !document.getElementById(BTN_ID)) {
-        scheduleEnsureButton(urlChanged ? 0 : ENSURE_BUTTON_DEBOUNCE_MS);
-      }
-    }, URL_WATCH_INTERVAL_MS);
-
-    new MutationObserver((mutations) => {
-      if (document.getElementById(BTN_ID)) return;
-      for (const mutation of mutations) {
-        if (mutation.addedNodes.length || mutation.removedNodes.length) {
-          scheduleEnsureButton();
-          return;
-        }
-      }
+    setInterval(ensureButton, 5000);
+    new MutationObserver(() => {
+      if (!document.getElementById(BTN_ID)) ensureButton();
     }).observe(document.body, { childList: true, subtree: true });
     debug("監視開始");
   }
@@ -2183,7 +1924,7 @@
   function init() {
     log("v3.5.0 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
-    setTimeout(() => { ensureButton(); startObserver(); }, 1500);
+    setTimeout(() => { ensureButton(); startObserver(); }, 2000);
   }
 
   if (document.readyState === "loading") {
