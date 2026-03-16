@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      4.1.0
+// @version      4.1.1
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -1399,22 +1399,27 @@
     return findModalByTitle(titleText);
   }
 
-  /** select 内で value または TEMP_FUTANSHA テキストを持つ option を選択する共通処理 */
+  /** select 内で option text に「21000000」かつ「精神通院」を含むものを選択する共通処理 */
   function selectKouhi21Option(sel) {
     if (!sel) return false;
-    // 優先: value="2800183"（実DB上のID）
+    debug(`selectKouhi21Option: options=${sel.options.length}`);
+    for (let i = 0; i < sel.options.length; i++) {
+      debug(`  option[${i}]: value="${sel.options[i].value}", text="${sel.options[i].textContent.trim()}"`);
+    }
+    // テキストに「21000000」かつ「精神通院」を含む option を選択（value は毎回変わるので使わない）
     for (const opt of sel.options) {
-      if (opt.value === "2800183") {
-        setSelectValue(sel, "2800183");
-        log(`公費1 → value=2800183, text="${opt.textContent.trim().substring(0, 60)}" を選択 ✓`);
+      const t = opt.textContent;
+      if (t.includes(TEMP_FUTANSHA) && t.includes(KOUHI_TYPE_TEXT)) {
+        setSelectValue(sel, opt.value);
+        log(`公費1 → value=${opt.value}, text="${t.trim().substring(0, 60)}" を選択 ✓`);
         return true;
       }
     }
-    // フォールバック: テキストに 21000000 or 精神通院 を含む option
+    // フォールバック: 21000000 のみで一致
     for (const opt of sel.options) {
-      if (opt.textContent.includes(TEMP_FUTANSHA) || opt.textContent.includes(KOUHI_TYPE_TEXT)) {
+      if (opt.textContent.includes(TEMP_FUTANSHA)) {
         setSelectValue(sel, opt.value);
-        log(`公費1 → value=${opt.value}, text="${opt.textContent.trim().substring(0, 60)}" を選択 ✓`);
+        log(`公費1(fallback) → value=${opt.value}, text="${opt.textContent.trim().substring(0, 60)}" を選択 ✓`);
         return true;
       }
     }
@@ -1460,64 +1465,64 @@
 
   /**
    * Phase2-2: カルテ更新モーダルで公費1を21公費に変更
-   * Radix UI の [role="dialog"] 内を優先探索し、fallback で document 全体を探す
+   * isVisible を使わず select を探索する（Radix UI dialog 内で offsetParent===null になるため）
    */
   async function phase2_selectKouhi1InKarteUpdate() {
     log("Phase2-2: カルテ更新モーダルで公費1を選択");
 
-    // findDialogByTitle で [role="dialog"] を取得（select を含む正しいスコープ）
     const dialog = findDialogByTitle("カルテ更新");
     if (!dialog) throw new Error("カルテ更新モーダルが見つかりません");
+    const dialogId = dialog.id || "(no id)";
 
     let kouhi1Sel = null;
 
-    // --- dialog スコープ内で探索 ---
-    // 最優先: label > select パターン（ユーザー提供セレクタの構造）
-    // 公費セクション内の最初の select で value=2800183 を持つもの
-    const dialogSelects = Array.from(dialog.querySelectorAll("select")).filter(isVisible);
-    debug(`dialog 内の visible select 数: ${dialogSelects.length}`);
-
-    // 方法1: select.css-1poodrh
-    kouhi1Sel = queryVisible(SELECTORS.karteUpdateKouhi1Select, dialog);
-    if (kouhi1Sel) debug("公費1: css-1poodrh で発見");
-
-    // 方法2: ラベル "1" の行
-    if (!kouhi1Sel) {
-      kouhi1Sel = findNumberedSelect(dialog, "1");
-      if (kouhi1Sel) debug("公費1: findNumberedSelect(1) で発見");
+    // --- 方法1: exact selector (css-1poodrh) を waitForElement で最大3秒待つ ---
+    debug(`公費1 exact selector 待機開始 (dialog#${dialogId})`);
+    try {
+      kouhi1Sel = await waitForElement(() => dialog.querySelector("select.css-1poodrh"), 3000, 100);
+      debug(`公費1: exact selector (css-1poodrh) で発見 ✓`);
+    } catch (_) {
+      debug("公費1: exact selector タイムアウト → フォールバック探索");
     }
 
-    // 方法3: name="expenseAndBurden1"
+    // --- 方法2: dialog 内の全 select を isVisible 判定なしで列挙 ---
     if (!kouhi1Sel) {
-      kouhi1Sel = dialog.querySelector('select[name="expenseAndBurden1"]');
-      if (kouhi1Sel) debug("公費1: name=expenseAndBurden1 で発見");
-    }
-
-    // 方法4: dialog 内で value=2800183 option を持つ最初の select（公費1 = DOM順で最初）
-    if (!kouhi1Sel) {
-      for (const sel of dialogSelects) {
+      const allSelects = Array.from(dialog.querySelectorAll("select"));
+      debug(`dialog#${dialogId} 内 select 総数（isVisible なし）: ${allSelects.length}`);
+      for (let i = 0; i < allSelects.length; i++) {
+        const sel = allSelects[i];
+        debug(`  select[${i}]: class="${sel.className}", name="${sel.name}", options=${sel.options.length}, outerHTML="${sel.outerHTML.substring(0, 120)}"`);
+        for (let j = 0; j < sel.options.length; j++) {
+          debug(`    option[${j}]: value="${sel.options[j].value}", text="${sel.options[j].textContent.trim()}"`);
+        }
+      }
+      // option text に「21000000」を含む最初の select を採用
+      for (const sel of allSelects) {
         for (const opt of sel.options) {
-          if (opt.value === "2800183" || opt.textContent.includes(TEMP_FUTANSHA)) {
+          if (opt.textContent.includes(TEMP_FUTANSHA)) {
             kouhi1Sel = sel;
+            debug("公費1: dialog 内 option テキスト走査で発見");
             break;
           }
         }
-        if (kouhi1Sel) { debug("公費1: dialog 内 option 走査で発見"); break; }
+        if (kouhi1Sel) break;
       }
     }
 
-    // --- 最終フォールバック: document 全体で visible select を探す ---
+    // --- 方法3: Radix portal 配下を走査（dialog の外に描画されている可能性） ---
     if (!kouhi1Sel) {
-      debug("dialog スコープ失敗 → document 全体で探索");
-      for (const sel of document.querySelectorAll("select")) {
-        if (!isVisible(sel)) continue;
+      debug("dialog スコープ失敗 → Radix portal / document 全体で探索");
+      const allDocSelects = Array.from(document.querySelectorAll("select"));
+      debug(`document 内 select 総数: ${allDocSelects.length}`);
+      for (const sel of allDocSelects) {
         for (const opt of sel.options) {
-          if (opt.value === "2800183" || opt.textContent.includes(TEMP_FUTANSHA)) {
+          if (opt.textContent.includes(TEMP_FUTANSHA)) {
             kouhi1Sel = sel;
+            debug(`公費1: document 全体 option テキスト走査で発見 (class="${sel.className}")`);
             break;
           }
         }
-        if (kouhi1Sel) { debug("公費1: document 全体 option 走査で発見"); break; }
+        if (kouhi1Sel) break;
       }
     }
 
@@ -1525,11 +1530,15 @@
       throw new Error("カルテ更新モーダルで公費1の select が見つかりません");
     }
 
-    debug(`公費1 select 発見: class="${kouhi1Sel.className}", options=${kouhi1Sel.options.length}`);
+    debug(`公費1 select 採用: class="${kouhi1Sel.className}", options=${kouhi1Sel.options.length}`);
 
     if (!selectKouhi21Option(kouhi1Sel)) {
       throw new Error("カルテ更新モーダルで21公費の option が見つかりません");
     }
+
+    // 選択後の確認
+    const selectedOpt = kouhi1Sel.options[kouhi1Sel.selectedIndex];
+    debug(`選択後の selected option: value="${selectedOpt?.value}", text="${selectedOpt?.textContent?.trim()}"`);
   }
 
   /**
@@ -1736,17 +1745,16 @@
       if (kouhi1Sel) debug("公費1: findNumberedSelect(1) で発見");
     }
 
-    // フォールバック: option走査（dialog スコープ）
+    // フォールバック: option テキスト走査（dialog スコープ、isVisible なし）
     if (!kouhi1Sel) {
       for (const sel of dialog.querySelectorAll("select")) {
-        if (!isVisible(sel)) continue;
         for (const opt of sel.options) {
-          if (opt.value === "2800183" || opt.textContent.includes(TEMP_FUTANSHA)) {
+          if (opt.textContent.includes(TEMP_FUTANSHA)) {
             kouhi1Sel = sel;
             break;
           }
         }
-        if (kouhi1Sel) { debug("公費1: option 走査で発見"); break; }
+        if (kouhi1Sel) { debug("公費1: option テキスト走査で発見"); break; }
       }
     }
 
@@ -1754,6 +1762,17 @@
     if (!kouhi1Sel) {
       debug("dialog スコープ失敗 → document 全体で探索");
       kouhi1Sel = document.querySelector(SELECTORS.reservationKouhi1Select);
+      if (!kouhi1Sel) {
+        for (const sel of document.querySelectorAll("select")) {
+          for (const opt of sel.options) {
+            if (opt.textContent.includes(TEMP_FUTANSHA)) {
+              kouhi1Sel = sel;
+              break;
+            }
+          }
+          if (kouhi1Sel) break;
+        }
+      }
     }
 
     if (!kouhi1Sel) {
@@ -2000,7 +2019,7 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v4.1.0 初期化");
+    log("v4.1.1 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
     setTimeout(() => { ensureButton(); startObserver(); }, 2000);
   }
