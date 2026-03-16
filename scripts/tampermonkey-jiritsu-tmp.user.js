@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自立仮番ボタン - デジカル公費自動登録
 // @namespace    https://namiki-mental.local
-// @version      4.0.0
+// @version      4.1.0
 // @description  デジカル保険画面に「自立仮番」ボタンを追加し、自立支援精神通院の仮登録を自動入力する
 // @author       Namiki Mental Clinic
 // @match        https://digikar.jp/*
@@ -1370,6 +1370,35 @@
   // Phase 2: カルテ更新 → 会計 → 患者一覧 → 保険編集
   // ══════════════════════════════════════════════════════════════
 
+  /**
+   * Radix UI の [role="dialog"] をタイトルテキストで探す
+   * findModalByTitle はオーバーレイ(backdrop)を返すことがあり、
+   * そのスコープ内に select 等のフォーム要素が含まれない場合がある。
+   * この関数は [role="dialog"] を優先的に返す。
+   */
+  function findDialogByTitle(titleText) {
+    // 方法1: [role="dialog"] を走査
+    for (const dialog of document.querySelectorAll('[role="dialog"]')) {
+      if (!isVisible(dialog)) continue;
+      if (dialog.textContent.includes(titleText)) {
+        debug(`findDialogByTitle("${titleText}") → [role=dialog]`, dialog.id || dialog.className?.substring?.(0, 40));
+        return dialog;
+      }
+    }
+    // 方法2: Radix portal を走査
+    for (const portal of document.querySelectorAll('[data-radix-portal]')) {
+      if (!isVisible(portal)) continue;
+      if (portal.textContent.includes(titleText)) {
+        const dialog = portal.querySelector('[role="dialog"]') || portal;
+        debug(`findDialogByTitle("${titleText}") → radix-portal`, dialog.tagName);
+        return dialog;
+      }
+    }
+    // 方法3: fallback to findModalByTitle
+    debug(`findDialogByTitle("${titleText}") → findModalByTitle fallback`);
+    return findModalByTitle(titleText);
+  }
+
   /** select 内で value または TEMP_FUTANSHA テキストを持つ option を選択する共通処理 */
   function selectKouhi21Option(sel) {
     if (!sel) return false;
@@ -1423,47 +1452,72 @@
     safeClick(editBtn);
     log("カルテ編集ボタンをクリック");
 
-    // 「カルテ更新」モーダルが開くのを待つ
-    const modal = await waitForElement(() => findModalByTitle("カルテ更新"), 5000);
+    // 「カルテ更新」モーダルが開くのを待つ（[role="dialog"] を優先検出）
+    const dialog = await waitForElement(() => findDialogByTitle("カルテ更新"), 5000);
     log("カルテ更新モーダルが開きました ✓");
-    return modal;
+    return dialog;
   }
 
   /**
    * Phase2-2: カルテ更新モーダルで公費1を21公費に変更
+   * Radix UI の [role="dialog"] 内を優先探索し、fallback で document 全体を探す
    */
   async function phase2_selectKouhi1InKarteUpdate() {
     log("Phase2-2: カルテ更新モーダルで公費1を選択");
 
-    const modal = findModalByTitle("カルテ更新");
-    if (!modal) throw new Error("カルテ更新モーダルが見つかりません");
+    // findDialogByTitle で [role="dialog"] を取得（select を含む正しいスコープ）
+    const dialog = findDialogByTitle("カルテ更新");
+    if (!dialog) throw new Error("カルテ更新モーダルが見つかりません");
 
-    // 最優先: select.css-1poodrh（カルテ更新モーダル内の公費1）
-    let kouhi1Sel = queryVisible(SELECTORS.karteUpdateKouhi1Select, modal);
+    let kouhi1Sel = null;
 
-    // フォールバック: ラベル "1" の行にある select
+    // --- dialog スコープ内で探索 ---
+    // 最優先: label > select パターン（ユーザー提供セレクタの構造）
+    // 公費セクション内の最初の select で value=2800183 を持つもの
+    const dialogSelects = Array.from(dialog.querySelectorAll("select")).filter(isVisible);
+    debug(`dialog 内の visible select 数: ${dialogSelects.length}`);
+
+    // 方法1: select.css-1poodrh
+    kouhi1Sel = queryVisible(SELECTORS.karteUpdateKouhi1Select, dialog);
+    if (kouhi1Sel) debug("公費1: css-1poodrh で発見");
+
+    // 方法2: ラベル "1" の行
     if (!kouhi1Sel) {
-      debug("css-1poodrh 失敗 → ラベル '1' 行で探索");
-      kouhi1Sel = findNumberedSelect(modal, "1");
+      kouhi1Sel = findNumberedSelect(dialog, "1");
+      if (kouhi1Sel) debug("公費1: findNumberedSelect(1) で発見");
     }
 
-    // フォールバック: name="expenseAndBurden1"
+    // 方法3: name="expenseAndBurden1"
     if (!kouhi1Sel) {
-      debug("ラベル '1' 行 失敗 → name=expenseAndBurden1 で探索");
-      kouhi1Sel = modal.querySelector('select[name="expenseAndBurden1"]');
+      kouhi1Sel = dialog.querySelector('select[name="expenseAndBurden1"]');
+      if (kouhi1Sel) debug("公費1: name=expenseAndBurden1 で発見");
     }
 
-    // フォールバック: モーダル内全 select を走査して 21000000 option を持つものを探す
+    // 方法4: dialog 内で value=2800183 option を持つ最初の select（公費1 = DOM順で最初）
     if (!kouhi1Sel) {
-      debug("name 失敗 → option走査で探索");
-      for (const sel of modal.querySelectorAll("select")) {
+      for (const sel of dialogSelects) {
         for (const opt of sel.options) {
           if (opt.value === "2800183" || opt.textContent.includes(TEMP_FUTANSHA)) {
             kouhi1Sel = sel;
             break;
           }
         }
-        if (kouhi1Sel) break;
+        if (kouhi1Sel) { debug("公費1: dialog 内 option 走査で発見"); break; }
+      }
+    }
+
+    // --- 最終フォールバック: document 全体で visible select を探す ---
+    if (!kouhi1Sel) {
+      debug("dialog スコープ失敗 → document 全体で探索");
+      for (const sel of document.querySelectorAll("select")) {
+        if (!isVisible(sel)) continue;
+        for (const opt of sel.options) {
+          if (opt.value === "2800183" || opt.textContent.includes(TEMP_FUTANSHA)) {
+            kouhi1Sel = sel;
+            break;
+          }
+        }
+        if (kouhi1Sel) { debug("公費1: document 全体 option 走査で発見"); break; }
       }
     }
 
@@ -1484,15 +1538,15 @@
   async function phase2_submitKarteUpdate() {
     log("Phase2-3: カルテ更新の更新ボタンをクリック");
 
-    const modal = findModalByTitle("カルテ更新");
-    if (!modal) throw new Error("カルテ更新モーダルが見つかりません");
+    const dialog = findDialogByTitle("カルテ更新");
+    if (!dialog) throw new Error("カルテ更新モーダルが見つかりません");
 
-    // 最優先: data-variant="primary" の更新ボタン
-    let updateBtn = modal.querySelector('button[data-variant="primary"]');
+    // 最優先: data-variant="primary" の更新ボタン（dialog スコープ）
+    let updateBtn = dialog.querySelector('button[data-variant="primary"]');
 
     // フォールバック: テキスト「更新」
     if (!updateBtn || !updateBtn.textContent.includes("更新")) {
-      updateBtn = findButtonByText("更新", modal);
+      updateBtn = findButtonByText("更新", dialog);
     }
 
     if (!updateBtn) throw new Error("カルテ更新の「更新」ボタンが見つかりません");
@@ -1504,13 +1558,13 @@
     try {
       await waitForCondition(() => {
         handleCustomConfirmDialog();
-        return !findModalByTitle("カルテ更新");
+        return !findDialogByTitle("カルテ更新");
       }, 5000);
       log("カルテ更新モーダルが閉じました ✓");
     } catch (_) {
       await handleCustomConfirmDialog();
       try {
-        await waitForCondition(() => !findModalByTitle("カルテ更新"), 3000);
+        await waitForCondition(() => !findDialogByTitle("カルテ更新"), 3000);
       } catch (__) {
         throw new Error("カルテ更新モーダルが閉じません");
       }
@@ -1548,20 +1602,37 @@
    * URL /reception/YYYYMMDD のページで、カルテ上部に表示されている患者番号を読む
    */
   function phase2_getPatientNumber() {
-    // カルテ画面の患者情報セクションから番号を取得
-    // スクリーンショットでは「2656」のような数字が表示されている
-    // URLから取得を試みる: /karte/patients/XXXX or /reception/YYYYMMDD
-    // → カルテ画面ではなく保険画面に居るので、テキストから探す
+    // カルテ画面ヘッダーに "2656 髙橋 里佳 タカハシ リカ 45歳" のように表示されている
+    // ページ上部(y<200px)にある、3-6桁の数字のみのテキストノードを探す
 
-    // 方法1: 患者番号欄（4桁の数字）を探す — ID表示エリア
-    const allText = document.body.innerText;
-    // 「患者」の近くにある数字を探す
-    const patientNumMatch = allText.match(/(?:患者(?:番号)?|ID|No)[^\d]*(\d{3,6})/);
-    if (patientNumMatch) {
-      debug(`患者番号を検出: ${patientNumMatch[1]}`);
-      return patientNumMatch[1];
+    // 方法1: ページ上部の standalone 数字テキストノード
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const candidates = [];
+    while (walker.nextNode()) {
+      const text = walker.currentNode.textContent.trim();
+      if (!/^\d{3,6}$/.test(text)) continue; // 3-6桁の数字のみ（日付を除外）
+      const el = walker.currentNode.parentElement;
+      if (!el || !isVisible(el)) continue;
+      if (el.closest('[role="dialog"], [class*="modal"], [class*="Modal"]')) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.top > 200) continue; // ページ上部に限定
+      candidates.push({ num: text, top: rect.top });
+    }
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => a.top - b.top);
+      debug(`患者番号を検出(ヘッダー): ${candidates[0].num} (y=${candidates[0].top.toFixed(0)})`);
+      return candidates[0].num;
     }
 
+    // 方法2: ヘッダーテキストから "数字 + 日本語名" パターン
+    const headerText = document.body.innerText.substring(0, 500);
+    const match = headerText.match(/(\d{3,6})\s+[\u3000-\u9FFF\uF900-\uFAFF]/);
+    if (match) {
+      debug(`患者番号を検出(パターン): ${match[1]}`);
+      return match[1];
+    }
+
+    warn("患者番号を取得できませんでした");
     return null;
   }
 
@@ -1629,7 +1700,7 @@
 
     // 予約編集モーダルが開くか待つ
     try {
-      await waitForElement(() => findModalByTitle("予約編集"), 2000);
+      await waitForElement(() => findDialogByTitle("予約編集"), 2000);
       log("予約編集モーダルが開きました ✓");
       return;
     } catch (_) {}
@@ -1640,7 +1711,7 @@
     if (editBtn) {
       safeClick(editBtn);
       log("保険セル内の編集ボタンをクリック");
-      await waitForElement(() => findModalByTitle("予約編集"), 3000);
+      await waitForElement(() => findDialogByTitle("予約編集"), 3000);
       log("予約編集モーダルが開きました ✓");
     } else {
       throw new Error("保険セルのクリックで予約編集モーダルが開きません");
@@ -1653,29 +1724,36 @@
   async function phase2_selectKouhi1InReservationEdit() {
     log("Phase2-6: 予約編集モーダルで公費1を選択");
 
-    const modal = await waitForElement(() => findModalByTitle("予約編集"), 5000);
+    const dialog = await waitForElement(() => findDialogByTitle("予約編集"), 5000);
 
-    // 最優先: name="expenseAndBurden1"
-    let kouhi1Sel = modal.querySelector(SELECTORS.reservationKouhi1Select);
+    // 最優先: name="expenseAndBurden1"（ユーザー提供セレクタ）
+    let kouhi1Sel = dialog.querySelector(SELECTORS.reservationKouhi1Select);
+    if (kouhi1Sel) debug("公費1: name=expenseAndBurden1 で発見");
 
     // フォールバック: ラベル "1" の行
     if (!kouhi1Sel) {
-      debug("expenseAndBurden1 失敗 → ラベル '1' 行で探索");
-      kouhi1Sel = findNumberedSelect(modal, "1");
+      kouhi1Sel = findNumberedSelect(dialog, "1");
+      if (kouhi1Sel) debug("公費1: findNumberedSelect(1) で発見");
     }
 
-    // フォールバック: option走査
+    // フォールバック: option走査（dialog スコープ）
     if (!kouhi1Sel) {
-      debug("ラベル '1' 行 失敗 → option走査で探索");
-      for (const sel of modal.querySelectorAll("select")) {
+      for (const sel of dialog.querySelectorAll("select")) {
+        if (!isVisible(sel)) continue;
         for (const opt of sel.options) {
           if (opt.value === "2800183" || opt.textContent.includes(TEMP_FUTANSHA)) {
             kouhi1Sel = sel;
             break;
           }
         }
-        if (kouhi1Sel) break;
+        if (kouhi1Sel) { debug("公費1: option 走査で発見"); break; }
       }
+    }
+
+    // 最終フォールバック: document 全体
+    if (!kouhi1Sel) {
+      debug("dialog スコープ失敗 → document 全体で探索");
+      kouhi1Sel = document.querySelector(SELECTORS.reservationKouhi1Select);
     }
 
     if (!kouhi1Sel) {
@@ -1695,15 +1773,15 @@
   async function phase2_submitReservationEdit() {
     log("Phase2-7: 予約編集の更新ボタンをクリック");
 
-    const modal = findModalByTitle("予約編集");
-    if (!modal) throw new Error("予約編集モーダルが見つかりません");
+    const dialog = findDialogByTitle("予約編集");
+    if (!dialog) throw new Error("予約編集モーダルが見つかりません");
 
-    // 最優先: footer 内の btn-info
-    let updateBtn = modal.querySelector("footer button.btn-info");
+    // 最優先: footer 内の btn-info（ユーザー提供セレクタ）
+    let updateBtn = dialog.querySelector("footer button.btn-info");
 
     // フォールバック: テキスト「更新」
     if (!updateBtn) {
-      updateBtn = findButtonByText("更新", modal);
+      updateBtn = findButtonByText("更新", dialog);
     }
 
     if (!updateBtn) throw new Error("予約編集の「更新」ボタンが見つかりません");
@@ -1715,13 +1793,13 @@
     try {
       await waitForCondition(() => {
         handleCustomConfirmDialog();
-        return !findModalByTitle("予約編集");
+        return !findDialogByTitle("予約編集");
       }, 5000);
       log("予約編集モーダルが閉じました ✓");
     } catch (_) {
       await handleCustomConfirmDialog();
       try {
-        await waitForCondition(() => !findModalByTitle("予約編集"), 3000);
+        await waitForCondition(() => !findDialogByTitle("予約編集"), 3000);
       } catch (__) {
         throw new Error("予約編集モーダルが閉じません");
       }
@@ -1922,7 +2000,7 @@
   // 初期化
   // ══════════════════════════════════════════════════════════════
   function init() {
-    log("v3.5.0 初期化");
+    log("v4.1.0 初期化");
     log(`設定: 仮番号=${TEMP_FUTANSHA}, 月上限=${MONTHLY_LIMIT}円, 割合=${RATE_PERCENT}%`);
     setTimeout(() => { ensureButton(); startObserver(); }, 2000);
   }
